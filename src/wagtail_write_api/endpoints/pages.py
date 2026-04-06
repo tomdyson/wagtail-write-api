@@ -26,6 +26,8 @@ def list_pages(
     order: Optional[str] = None,
     offset: int = 0,
     limit: Optional[int] = None,
+    slug: Optional[str] = None,
+    path: Optional[str] = None,
 ):
     from wagtail.models import Page
 
@@ -60,6 +62,16 @@ def list_pages(
         qs = qs.filter(live=False)
     elif status == "live+draft":
         qs = qs.filter(live=True, has_unpublished_changes=True)
+
+    if slug:
+        qs = qs.filter(slug=slug)
+
+    if path:
+        resolved = _resolve_page_by_path(path)
+        if resolved:
+            qs = qs.filter(id=resolved.id)
+        else:
+            qs = qs.none()
 
     if search:
         qs = qs.search(search)
@@ -132,19 +144,33 @@ def create_page(request):
     except (json.JSONDecodeError, ValueError) as exc:
         return 422, {"error": "validation_error", "message": f"Invalid JSON: {exc}"}
     type_str = body.get("type")
-    parent_id = body.get("parent")
+    parent_ref = body.get("parent")
 
-    if not type_str or not parent_id:
+    if not type_str or not parent_ref:
         return 422, {"error": "validation_error", "message": "type and parent are required"}
 
     model_class = resolve_page_type(type_str)
     if not model_class:
         return 422, {"error": "validation_error", "message": f"Unknown page type: {type_str}"}
 
-    try:
-        parent_page = Page.objects.get(id=parent_id).specific
-    except Page.DoesNotExist:
-        return 422, {"error": "validation_error", "message": f"Parent page {parent_id} not found"}
+    # Resolve parent — accepts an integer ID or a URL path string
+    if isinstance(parent_ref, str) and not parent_ref.isdigit():
+        parent_page = _resolve_page_by_path(parent_ref)
+        if not parent_page:
+            return 422, {
+                "error": "validation_error",
+                "message": f"No page found at path: {parent_ref}",
+            }
+        parent_page = parent_page.specific
+    else:
+        parent_id = int(parent_ref)
+        try:
+            parent_page = Page.objects.get(id=parent_id).specific
+        except Page.DoesNotExist:
+            return 422, {
+                "error": "validation_error",
+                "message": f"Parent page {parent_id} not found",
+            }
 
     # Check parent allows this child type
     allowed = parent_page.specific_class.allowed_subpage_models()
@@ -395,6 +421,28 @@ def move_page(request, page_id: int):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+def _resolve_page_by_path(path: str):
+    """Resolve a URL path like '/blog/' to a Page, using the default Site's routing."""
+    from wagtail.models import Site
+
+    # Normalise: ensure leading and trailing slashes
+    path = path.strip()
+    if not path.startswith("/"):
+        path = "/" + path
+    if not path.endswith("/"):
+        path = path + "/"
+
+    site = Site.objects.filter(is_default_site=True).first()
+    if not site:
+        return None
+
+    try:
+        page, _, _ = site.root_page.specific.route(None, [c for c in path.split("/") if c])
+        return page
+    except Exception:
+        return None
+
+
 def _apply_fields(page, body, model_class):
     """Apply request body fields to a page instance."""
     from modelcluster.fields import ParentalKey

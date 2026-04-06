@@ -50,7 +50,7 @@ The `allowed_parent_types` and `allowed_subpage_types` reflect the page model's 
 GET /schema/page-types/blog.BlogPage/
 ```
 
-Returns the full JSON Schema for the create, patch, and read schemas:
+Returns the full JSON Schema for the create, patch, and read schemas, plus detailed StreamField block definitions:
 
 ```json
 {
@@ -60,7 +60,7 @@ Returns the full JSON Schema for the create, patch, and read schemas:
     "type": "object",
     "properties": {
       "type": {"type": "string"},
-      "parent": {"type": "integer"},
+      "parent": {"anyOf": [{"type": "integer"}, {"type": "string"}]},
       "title": {"type": "string"},
       "slug": {"anyOf": [{"type": "string"}, {"type": "null"}]},
       "published_date": {"anyOf": [{"type": "string", "format": "date"}, {"type": "null"}]},
@@ -70,11 +70,65 @@ Returns the full JSON Schema for the create, patch, and read schemas:
     "required": ["type", "parent", "title"]
   },
   "patch_schema": { ... },
-  "read_schema": { ... }
+  "read_schema": { ... },
+  "streamfield_blocks": {
+    "body": [
+      {
+        "type": "heading",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "text": {"type": "string", "required": true},
+            "size": {"type": "string", "enum": ["h2", "h3", "h4"], "required": true}
+          }
+        }
+      },
+      {
+        "type": "paragraph",
+        "schema": {"type": "richtext"}
+      },
+      {
+        "type": "image",
+        "schema": {"type": "image_chooser"}
+      },
+      {
+        "type": "gallery",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "image": {"type": "image_chooser", "required": true},
+              "caption": {"type": "string", "required": false}
+            }
+          }
+        }
+      }
+    ]
+  }
 }
 ```
 
-These schemas are the Pydantic models' JSON Schema representation, generated automatically from your Wagtail page models.
+The `create_schema`, `patch_schema`, and `read_schema` are Pydantic-generated JSON Schemas. The `streamfield_blocks` section provides detailed block type definitions for each StreamField on the model, including nested StructBlock properties, ListBlock item schemas, ChoiceBlock enums, and chooser block types. For page types with no StreamFields, `streamfield_blocks` is an empty object.
+
+### Block schema types
+
+| Schema type | Meaning |
+|-------------|---------|
+| `string` | CharBlock, TextBlock |
+| `richtext` | RichTextBlock (accepts HTML or Markdown) |
+| `integer` | IntegerBlock |
+| `float` | FloatBlock |
+| `boolean` | BooleanBlock |
+| `date` | DateBlock |
+| `datetime` | DateTimeBlock |
+| `url` | URLBlock |
+| `email` | EmailBlock |
+| `image_chooser` | ImageChooserBlock (value is an image ID) |
+| `page_chooser` | PageChooserBlock (value is a page ID) |
+| `object` | StructBlock (has `properties` with child block schemas) |
+| `array` | ListBlock (has `items` with the child block schema) |
+| `streamfield` | Nested StreamBlock (has `block_types` list) |
 
 ---
 

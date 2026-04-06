@@ -22,9 +22,7 @@ def live_page(home_page):
 @pytest.mark.django_db
 class TestPublish:
     def test_publish_draft_page(self, api_client, auth_header, draft_page):
-        response = api_client.post(
-            f"/api/write/v1/pages/{draft_page.id}/publish/", **auth_header
-        )
+        response = api_client.post(f"/api/write/v1/pages/{draft_page.id}/publish/", **auth_header)
         assert response.status_code == 200
         draft_page.refresh_from_db()
         assert draft_page.live is True
@@ -37,9 +35,7 @@ class TestPublish:
 @pytest.mark.django_db
 class TestUnpublish:
     def test_unpublish_live_page(self, api_client, auth_header, live_page):
-        response = api_client.post(
-            f"/api/write/v1/pages/{live_page.id}/unpublish/", **auth_header
-        )
+        response = api_client.post(f"/api/write/v1/pages/{live_page.id}/unpublish/", **auth_header)
         assert response.status_code == 200
         live_page.refresh_from_db()
         assert live_page.live is False
@@ -54,9 +50,7 @@ class TestRevisions:
         draft_page.title = "Rev 3"
         draft_page.save_revision()
 
-        response = api_client.get(
-            f"/api/write/v1/pages/{draft_page.id}/revisions/", **auth_header
-        )
+        response = api_client.get(f"/api/write/v1/pages/{draft_page.id}/revisions/", **auth_header)
         assert response.status_code == 200
         data = response.json()
         assert len(data["items"]) == 3

@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from pydantic import create_model
 
@@ -59,7 +59,7 @@ def generate_schemas_for_model(model_class):
     # CreateSchema: type + parent required, no id, slug optional
     create_fields = {}
     create_fields["type"] = (str, ...)
-    create_fields["parent"] = (int, ...)
+    create_fields["parent"] = (Union[int, str], ...)
     create_fields["action"] = (Optional[str], None)
     for name, (python_type, default) in write_fields.items():
         if name == "slug":
