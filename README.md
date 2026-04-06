@@ -89,8 +89,10 @@ uv run python manage.py runserver
 ## Releasing to PyPI
 
 1. Update the version in `pyproject.toml` and `src/wagtail_write_api/__init__.py`
-2. Build: `uv build`
-3. Publish: `uv publish --token pypi-YOUR_TOKEN`
+2. Commit, push to `main`
+3. Create a GitHub release: `gh release create v0.2.0 --generate-notes`
+
+The [publish workflow](.github/workflows/publish.yml) builds and uploads to PyPI automatically via trusted publishing.
 
 ## Licence
 
