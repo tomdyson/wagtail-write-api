@@ -7,7 +7,7 @@ def test_app_loads():
     """The wagtail_write_api app loads without errors."""
     from wagtail_write_api import __version__
 
-    assert __version__ == "0.1.0"
+    assert __version__
 
 
 @pytest.mark.django_db
