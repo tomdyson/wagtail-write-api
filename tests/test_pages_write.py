@@ -122,6 +122,40 @@ class TestCreatePage:
         )
         assert response.status_code == 422
 
+    def test_create_invalid_streamfield_data_returns_422(
+        self, api_client, auth_header, blog_tree
+    ):
+        """Passing a dict instead of a list for a StreamField returns 422, not 500."""
+        response = api_client.post(
+            "/api/write/v1/pages/",
+            data=json.dumps(
+                {
+                    "type": "testapp.BlogPage",
+                    "parent": blog_tree["blog_index"].id,
+                    "title": "Bad StreamField",
+                    "body": {"format": "markdown", "content": "This is wrong"},
+                }
+            ),
+            content_type="application/json",
+            **auth_header,
+        )
+        assert response.status_code == 422
+        data = response.json()
+        assert data["error"] == "validation_error"
+
+    def test_create_malformed_json_returns_422(self, api_client, auth_header):
+        """Malformed JSON in request body returns 422, not 500."""
+        response = api_client.post(
+            "/api/write/v1/pages/",
+            data="not valid json{",
+            content_type="application/json",
+            **auth_header,
+        )
+        assert response.status_code == 422
+        data = response.json()
+        assert data["error"] == "validation_error"
+        assert "Invalid JSON" in data["message"]
+
 
 @pytest.mark.django_db
 class TestUpdatePage:

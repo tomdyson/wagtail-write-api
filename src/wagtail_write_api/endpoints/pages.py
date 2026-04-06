@@ -126,7 +126,10 @@ def get_page(request, page_id: int, version: Optional[str] = None):
 def create_page(request):
     from wagtail.models import Page
 
-    body = json.loads(request.body)
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError) as exc:
+        return 422, {"error": "validation_error", "message": f"Invalid JSON: {exc}"}
     type_str = body.get("type")
     parent_id = body.get("parent")
 
@@ -160,10 +163,17 @@ def create_page(request):
     )
 
     # Apply additional fields
-    _apply_fields(page, body, model_class)
+    try:
+        _apply_fields(page, body, model_class)
+    except (TypeError, ValueError, AttributeError) as exc:
+        return 422, {"error": "validation_error", "message": f"Invalid field data: {exc}"}
 
     # Add to tree and save revision
-    parent_page.add_child(instance=page)
+    try:
+        parent_page.add_child(instance=page)
+    except (TypeError, ValueError) as exc:
+        return 422, {"error": "validation_error", "message": f"Failed to create page: {exc}"}
+
     revision = page.save_revision(user=request.user)
 
     # Optionally publish
@@ -179,7 +189,7 @@ def create_page(request):
 # ---------------------------------------------------------------------------
 # UPDATE
 # ---------------------------------------------------------------------------
-@router.patch("/{page_id}/", response={200: dict, 404: dict})
+@router.patch("/{page_id}/", response={200: dict, 404: dict, 422: dict})
 def update_page(request, page_id: int):
     from wagtail.models import Page
 
@@ -188,7 +198,10 @@ def update_page(request, page_id: int):
     except Page.DoesNotExist:
         raise Http404("Page not found")
 
-    body = json.loads(request.body)
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError) as exc:
+        return 422, {"error": "validation_error", "message": f"Invalid JSON: {exc}"}
 
     # Apply fields
     if "title" in body:
@@ -196,7 +209,10 @@ def update_page(request, page_id: int):
     if "slug" in body:
         page.slug = body["slug"]
 
-    _apply_fields(page, body, page.__class__)
+    try:
+        _apply_fields(page, body, page.__class__)
+    except (TypeError, ValueError, AttributeError) as exc:
+        return 422, {"error": "validation_error", "message": f"Invalid field data: {exc}"}
 
     page.save()
     revision = page.save_revision(user=request.user)

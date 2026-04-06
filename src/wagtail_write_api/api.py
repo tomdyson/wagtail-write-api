@@ -36,6 +36,19 @@ def on_validation_error(request, exc):
     )
 
 
+@api.exception_handler(Exception)
+def on_unhandled_error(request, exc):
+    import logging
+
+    logger = logging.getLogger("wagtail_write_api")
+    logger.exception("Unhandled error in wagtail-write-api")
+    return api.create_response(
+        request,
+        {"error": "server_error", "message": str(exc)},
+        status=500,
+    )
+
+
 from wagtail_write_api.endpoints.images import router as images_router
 from wagtail_write_api.endpoints.pages import router as pages_router
 from wagtail_write_api.endpoints.schema_discovery import router as schema_router
