@@ -1,0 +1,71 @@
+[project]
+site_name = "wagtail-write-api"
+site_description = "A read/write REST API for Wagtail CMS, built on Django Ninja"
+site_author = "Tom Dyson"
+site_url = "https://tomdyson.github.io/wagtail-write-api/"
+copyright = "Copyright &copy; 2026 Tom Dyson"
+
+nav = [
+    { "Home" = "index.md" },
+    { "Getting Started" = [
+        "getting-started/installation.md",
+        "getting-started/quickstart.md",
+        "getting-started/configuration.md",
+    ]},
+    { "API Reference" = [
+        "api/pages.md",
+        "api/images.md",
+        "api/schema-discovery.md",
+        "api/authentication.md",
+    ]},
+    { "Guides" = [
+        "guides/rich-text.md",
+        "guides/streamfield.md",
+        "guides/permissions.md",
+        "guides/workflow.md",
+    ]},
+    { "Development" = [
+        "development/contributing.md",
+        "development/example-app.md",
+    ]},
+]
+
+[project.theme]
+language = "en"
+features = [
+    "content.code.annotate",
+    "content.code.copy",
+    "content.code.select",
+    "content.tabs.link",
+    "navigation.footer",
+    "navigation.indexes",
+    "navigation.instant",
+    "navigation.instant.prefetch",
+    "navigation.path",
+    "navigation.sections",
+    "navigation.top",
+    "navigation.tracking",
+    "search.highlight",
+]
+
+[[project.theme.palette]]
+scheme = "default"
+primary = "teal"
+accent = "amber"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+primary = "teal"
+accent = "amber"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/tomdyson/wagtail-write-api"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/python"
+link = "https://pypi.org/project/wagtail-write-api/"

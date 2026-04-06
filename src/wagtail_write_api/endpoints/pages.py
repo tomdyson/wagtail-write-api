@@ -1,0 +1,554 @@
+import json
+from typing import Optional
+
+from django.http import Http404, HttpResponse
+from ninja import Router
+
+from wagtail_write_api.auth import WagtailTokenAuth
+from wagtail_write_api.permissions import get_user_page_permissions
+from wagtail_write_api.settings import api_settings
+from wagtail_write_api.utils import generate_unique_slug, resolve_page_type
+
+router = Router(tags=["pages"], auth=WagtailTokenAuth())
+
+
+# ---------------------------------------------------------------------------
+# LIST
+# ---------------------------------------------------------------------------
+@router.get("/")
+def list_pages(
+    request,
+    type: Optional[str] = None,
+    parent: Optional[int] = None,
+    descendant_of: Optional[int] = None,
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    order: Optional[str] = None,
+    offset: int = 0,
+    limit: Optional[int] = None,
+):
+    from wagtail.models import Page
+
+    if limit is None:
+        limit = api_settings.DEFAULT_PAGE_SIZE
+    limit = min(limit, api_settings.MAX_PAGE_SIZE)
+
+    qs = Page.objects.all().order_by("path")
+
+    if type:
+        model_class = resolve_page_type(type)
+        if model_class:
+            qs = model_class.objects.all().order_by("path")
+
+    if parent:
+        try:
+            parent_page = Page.objects.get(id=parent)
+            qs = qs.child_of(parent_page)
+        except Page.DoesNotExist:
+            pass
+
+    if descendant_of:
+        try:
+            ancestor = Page.objects.get(id=descendant_of)
+            qs = qs.descendant_of(ancestor)
+        except Page.DoesNotExist:
+            pass
+
+    if status == "live":
+        qs = qs.filter(live=True, has_unpublished_changes=False)
+    elif status == "draft":
+        qs = qs.filter(live=False)
+    elif status == "live+draft":
+        qs = qs.filter(live=True, has_unpublished_changes=True)
+
+    if search:
+        qs = qs.search(search)
+
+    if order:
+        order_fields = [f.strip() for f in order.split(",")]
+        qs = qs.order_by(*order_fields)
+
+    total_count = qs.count()
+    pages = qs[offset : offset + limit]
+
+    items = []
+    for page in pages:
+        specific = page.specific
+        type_str = f"{specific._meta.app_label}.{specific.__class__.__name__}"
+        items.append(
+            {
+                "id": page.id,
+                "title": page.title,
+                "slug": page.slug,
+                "meta": {
+                    "type": type_str,
+                    "live": page.live,
+                    "has_unpublished_changes": page.has_unpublished_changes,
+                    "parent_id": page.get_parent().id if page.get_parent() else None,
+                },
+            }
+        )
+
+    return {"items": items, "meta": {"total_count": total_count}}
+
+
+# ---------------------------------------------------------------------------
+# DETAIL
+# ---------------------------------------------------------------------------
+@router.get("/{page_id}/")
+def get_page(request, page_id: int, version: Optional[str] = None):
+    from wagtail.models import Page
+
+    try:
+        page = Page.objects.get(id=page_id)
+    except Page.DoesNotExist:
+        raise Http404("Page not found")
+
+    specific = page.specific
+    type_str = f"{specific._meta.app_label}.{specific.__class__.__name__}"
+
+    # Draft-aware reads
+    if version == "live":
+        source = specific
+    elif specific.has_unpublished_changes and specific.get_latest_revision():
+        source = specific.get_latest_revision().as_object()
+    else:
+        source = specific
+
+    data = _serialize_page(source, specific, type_str, request.user)
+    return data
+
+
+# ---------------------------------------------------------------------------
+# CREATE
+# ---------------------------------------------------------------------------
+@router.post("/", response={201: dict, 422: dict})
+def create_page(request):
+    from wagtail.models import Page
+
+    body = json.loads(request.body)
+    type_str = body.get("type")
+    parent_id = body.get("parent")
+
+    if not type_str or not parent_id:
+        return 422, {"error": "validation_error", "message": "type and parent are required"}
+
+    model_class = resolve_page_type(type_str)
+    if not model_class:
+        return 422, {"error": "validation_error", "message": f"Unknown page type: {type_str}"}
+
+    try:
+        parent_page = Page.objects.get(id=parent_id).specific
+    except Page.DoesNotExist:
+        return 422, {"error": "validation_error", "message": f"Parent page {parent_id} not found"}
+
+    # Check parent allows this child type
+    allowed = parent_page.specific_class.allowed_subpage_models()
+    if model_class not in allowed:
+        return 422, {
+            "error": "validation_error",
+            "message": f"{type_str} cannot be created under {parent_page.specific_class.__name__}",
+        }
+
+    # Build the page instance
+    slug = body.get("slug") or generate_unique_slug(body.get("title", "page"), parent_page)
+    page = model_class(
+        title=body.get("title", ""),
+        slug=slug,
+        live=False,
+        owner=request.user,
+    )
+
+    # Apply additional fields
+    _apply_fields(page, body, model_class)
+
+    # Add to tree and save revision
+    parent_page.add_child(instance=page)
+    revision = page.save_revision(user=request.user)
+
+    # Optionally publish
+    if body.get("action") == "publish":
+        revision.publish(user=request.user)
+        page.refresh_from_db()
+
+    type_str_actual = f"{page._meta.app_label}.{page.__class__.__name__}"
+    data = _serialize_page(page, page, type_str_actual, request.user)
+    return 201, data
+
+
+# ---------------------------------------------------------------------------
+# UPDATE
+# ---------------------------------------------------------------------------
+@router.patch("/{page_id}/", response={200: dict, 404: dict})
+def update_page(request, page_id: int):
+    from wagtail.models import Page
+
+    try:
+        page = Page.objects.get(id=page_id).specific
+    except Page.DoesNotExist:
+        raise Http404("Page not found")
+
+    body = json.loads(request.body)
+
+    # Apply fields
+    if "title" in body:
+        page.title = body["title"]
+    if "slug" in body:
+        page.slug = body["slug"]
+
+    _apply_fields(page, body, page.__class__)
+
+    page.save()
+    revision = page.save_revision(user=request.user)
+
+    if body.get("action") == "publish":
+        revision.publish(user=request.user)
+        page.refresh_from_db()
+
+    type_str = f"{page._meta.app_label}.{page.__class__.__name__}"
+    data = _serialize_page(page, page, type_str, request.user)
+    return data
+
+
+# ---------------------------------------------------------------------------
+# DELETE
+# ---------------------------------------------------------------------------
+@router.delete("/{page_id}/")
+def delete_page(request, page_id: int):
+    from wagtail.models import Page
+
+    try:
+        page = Page.objects.get(id=page_id)
+    except Page.DoesNotExist:
+        raise Http404("Page not found")
+
+    page.delete()
+    return HttpResponse(status=204)
+
+
+# ---------------------------------------------------------------------------
+# PUBLISH
+# ---------------------------------------------------------------------------
+@router.post("/{page_id}/publish/")
+def publish_page(request, page_id: int):
+    from wagtail.models import Page
+
+    try:
+        page = Page.objects.get(id=page_id).specific
+    except Page.DoesNotExist:
+        raise Http404("Page not found")
+
+    revision = page.get_latest_revision()
+    if revision:
+        revision.publish(user=request.user)
+    else:
+        page.live = True
+        page.save()
+
+    page.refresh_from_db()
+    type_str = f"{page._meta.app_label}.{page.__class__.__name__}"
+    return _serialize_page(page, page, type_str, request.user)
+
+
+# ---------------------------------------------------------------------------
+# UNPUBLISH
+# ---------------------------------------------------------------------------
+@router.post("/{page_id}/unpublish/")
+def unpublish_page(request, page_id: int):
+    from wagtail.models import Page
+
+    try:
+        page = Page.objects.get(id=page_id).specific
+    except Page.DoesNotExist:
+        raise Http404("Page not found")
+
+    page.unpublish(user=request.user)
+    page.refresh_from_db()
+    type_str = f"{page._meta.app_label}.{page.__class__.__name__}"
+    return _serialize_page(page, page, type_str, request.user)
+
+
+# ---------------------------------------------------------------------------
+# REVISIONS
+# ---------------------------------------------------------------------------
+@router.get("/{page_id}/revisions/")
+def list_revisions(request, page_id: int):
+    from wagtail.models import Page
+
+    try:
+        page = Page.objects.get(id=page_id)
+    except Page.DoesNotExist:
+        raise Http404("Page not found")
+
+    revisions = page.revisions.order_by("-created_at")
+    items = [
+        {
+            "id": rev.id,
+            "created_at": rev.created_at.isoformat(),
+            "user": rev.user.username if rev.user else None,
+        }
+        for rev in revisions
+    ]
+    return {"items": items}
+
+
+@router.get("/{page_id}/revisions/{revision_id}/")
+def get_revision(request, page_id: int, revision_id: int):
+    from wagtail.models import Page, Revision
+
+    try:
+        page = Page.objects.get(id=page_id)
+    except Page.DoesNotExist:
+        raise Http404("Page not found")
+
+    try:
+        revision = page.revisions.get(id=revision_id)
+    except Revision.DoesNotExist:
+        raise Http404("Revision not found")
+
+    rev_page = revision.as_object()
+    type_str = f"{page.specific._meta.app_label}.{page.specific.__class__.__name__}"
+    return _serialize_page(rev_page, page.specific, type_str, request.user)
+
+
+# ---------------------------------------------------------------------------
+# COPY
+# ---------------------------------------------------------------------------
+@router.post("/{page_id}/copy/", response={201: dict})
+def copy_page(request, page_id: int):
+    from wagtail.models import Page
+
+    try:
+        page = Page.objects.get(id=page_id).specific
+    except Page.DoesNotExist:
+        raise Http404("Page not found")
+
+    body = json.loads(request.body)
+    dest_id = body.get("destination")
+    recursive = body.get("recursive", True)
+
+    try:
+        destination = Page.objects.get(id=dest_id)
+    except Page.DoesNotExist:
+        raise Http404("Destination page not found")
+
+    # Generate a unique slug for the copy
+    new_slug = generate_unique_slug(page.title, destination)
+    new_page = page.copy(
+        to=destination,
+        recursive=recursive,
+        keep_live=False,
+        user=request.user,
+        update_attrs={"slug": new_slug},
+    )
+
+    type_str = f"{new_page._meta.app_label}.{new_page.__class__.__name__}"
+    data = _serialize_page(new_page, new_page, type_str, request.user)
+    return 201, data
+
+
+# ---------------------------------------------------------------------------
+# MOVE
+# ---------------------------------------------------------------------------
+@router.post("/{page_id}/move/")
+def move_page(request, page_id: int):
+    from wagtail.models import Page
+
+    try:
+        page = Page.objects.get(id=page_id)
+    except Page.DoesNotExist:
+        raise Http404("Page not found")
+
+    body = json.loads(request.body)
+    dest_id = body.get("destination")
+    position = body.get("position", "last-child")
+
+    try:
+        destination = Page.objects.get(id=dest_id)
+    except Page.DoesNotExist:
+        raise Http404("Destination page not found")
+
+    page.move(destination, pos=position)
+    page.refresh_from_db()
+    specific = page.specific
+    type_str = f"{specific._meta.app_label}.{specific.__class__.__name__}"
+    return _serialize_page(specific, specific, type_str, request.user)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+def _apply_fields(page, body, model_class):
+    """Apply request body fields to a page instance."""
+    from modelcluster.fields import ParentalKey
+    from wagtail.fields import RichTextField, StreamField
+    from wagtail.models import Orderable
+
+    from wagtail_write_api.converters.rich_text import convert_rich_text_input
+
+    skip_keys = {"type", "parent", "title", "slug", "action", "id"}
+
+    # Gather orderable relation names
+    orderable_rels = {}
+    for rel in model_class._meta.related_objects:
+        if not hasattr(rel, "related_model"):
+            continue
+        if issubclass(rel.related_model, Orderable):
+            orderable_rels[rel.get_accessor_name()] = rel.related_model
+
+    for key, value in body.items():
+        if key in skip_keys:
+            continue
+
+        # Handle orderable children
+        if key in orderable_rels:
+            related_model = orderable_rels[key]
+            manager = getattr(page, key)
+            # Clear existing — use set() or individual removal
+            existing = list(manager.all())
+            for obj in existing:
+                manager.remove(obj)
+            for i, child_data in enumerate(value):
+                child = related_model(sort_order=i, **child_data)
+                manager.add(child)
+            continue
+
+        # Handle regular fields
+        field = None
+        try:
+            field = model_class._meta.get_field(key)
+        except Exception:
+            continue
+
+        if isinstance(field, StreamField):
+            setattr(page, key, value)
+        elif isinstance(field, RichTextField):
+            setattr(page, key, convert_rich_text_input(value))
+        elif field and field.is_relation:
+            setattr(page, f"{key}_id", value)
+        else:
+            setattr(page, key, value)
+
+
+def _serialize_page(source, page, type_str, user):
+    """Serialize a page instance to a dict."""
+    from wagtail_write_api.schema.registry import schema_registry
+
+    data = {"id": page.id}
+
+    try:
+        read_schema, _, _ = schema_registry.get_schemas(type_str)
+        for field_name in read_schema.model_fields:
+            if field_name in ("id",):
+                continue
+            if hasattr(source, field_name):
+                val = getattr(source, field_name)
+                data[field_name] = _serialize_value(val)
+    except KeyError:
+        data["title"] = source.title
+        data["slug"] = source.slug
+
+    parent = page.get_parent()
+    parent_specific = parent.specific if parent else None
+    data["meta"] = {
+        "type": type_str,
+        "live": page.live,
+        "has_unpublished_changes": page.has_unpublished_changes,
+        "first_published_at": (
+            page.first_published_at.isoformat() if page.first_published_at else None
+        ),
+        "last_published_at": (
+            page.last_published_at.isoformat() if page.last_published_at else None
+        ),
+        "parent_id": parent.id if parent else None,
+        "parent_type": (
+            f"{parent_specific._meta.app_label}.{parent_specific.__class__.__name__}"
+            if parent_specific
+            else None
+        ),
+        "children_count": page.get_children().count(),
+        "user_permissions": get_user_page_permissions(user, page),
+    }
+
+    return data
+
+
+def _serialize_value(val):
+    """Convert a field value to JSON-serializable form."""
+    from datetime import date, datetime
+
+    from wagtail.rich_text import RichText
+
+    if val is None:
+        return None
+    if isinstance(val, RichText):
+        return str(val)
+    if isinstance(val, datetime):
+        return val.isoformat()
+    if isinstance(val, date):
+        return val.isoformat()
+    if isinstance(val, (str, int, float, bool)):
+        return val
+
+    # StreamField value
+    if hasattr(val, "stream_data"):
+        try:
+            return list(val.stream_data)
+        except Exception:
+            pass
+    if hasattr(val, "stream_block"):
+        result = []
+        for block in val:
+            result.append(
+                {
+                    "type": block.block_type,
+                    "value": _serialize_block_value(block.value),
+                    "id": block.id,
+                }
+            )
+        return result
+
+    # RelatedManager (e.g., Orderable children)
+    if hasattr(val, "all"):
+        from modelcluster.fields import ParentalKey
+
+        items = []
+        for obj in val.all():
+            item = {}
+            for field in obj._meta.get_fields():
+                if isinstance(field, ParentalKey):
+                    continue
+                if field.name == "id":
+                    item["id"] = obj.id
+                elif hasattr(obj, field.name) and not field.is_relation:
+                    item[field.name] = getattr(obj, field.name)
+            items.append(item)
+        return items
+
+    # FK — return the ID
+    if hasattr(val, "pk"):
+        return val.pk
+
+    try:
+        return str(val)
+    except Exception:
+        return repr(val)
+
+
+def _serialize_block_value(val):
+    """Serialize a StreamField block value."""
+    from wagtail.rich_text import RichText
+
+    if val is None:
+        return None
+    if isinstance(val, (str, int, float, bool)):
+        return val
+    if isinstance(val, RichText):
+        return str(val)
+    if isinstance(val, dict):
+        return {k: _serialize_block_value(v) for k, v in val.items()}
+    if isinstance(val, list):
+        return [_serialize_block_value(item) for item in val]
+    if hasattr(val, "pk"):
+        return val.pk
+    return str(val)
