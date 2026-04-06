@@ -153,6 +153,13 @@ def create_page(request):
     if not model_class:
         return 422, {"error": "validation_error", "message": f"Unknown page type: {type_str}"}
 
+    if isinstance(parent_ref, str):
+        parent_ref = parent_ref.strip()
+        if not parent_ref:
+            return 422, {
+                "error": "validation_error",
+                "message": "type and parent are required",
+            }
     # Resolve parent — accepts an integer ID or a URL path string
     if isinstance(parent_ref, str) and not parent_ref.isdigit():
         parent_page = _resolve_page_by_path(parent_ref)
