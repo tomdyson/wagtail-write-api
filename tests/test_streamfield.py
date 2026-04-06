@@ -9,9 +9,7 @@ from testapp.models import BlogIndexPage, BlogPage
 
 @pytest.fixture
 def blog_with_streamfield(home_page):
-    blog_index = home_page.add_child(
-        instance=BlogIndexPage(title="Blog", slug="blog", intro="")
-    )
+    blog_index = home_page.add_child(instance=BlogIndexPage(title="Blog", slug="blog", intro=""))
     blog_index.save_revision().publish()
 
     blog = blog_index.add_child(
@@ -40,7 +38,9 @@ def blog_with_streamfield(home_page):
 
 @pytest.mark.django_db
 class TestStreamFieldRead:
-    def test_streamfield_returns_list_of_blocks(self, api_client, auth_header, blog_with_streamfield):
+    def test_streamfield_returns_list_of_blocks(
+        self, api_client, auth_header, blog_with_streamfield
+    ):
         response = api_client.get(
             f"/api/write/v1/pages/{blog_with_streamfield.id}/", **auth_header
         )
@@ -48,7 +48,9 @@ class TestStreamFieldRead:
         assert isinstance(data["body"], list)
         assert len(data["body"]) == 2
 
-    def test_streamfield_block_has_type_value_id(self, api_client, auth_header, blog_with_streamfield):
+    def test_streamfield_block_has_type_value_id(
+        self, api_client, auth_header, blog_with_streamfield
+    ):
         response = api_client.get(
             f"/api/write/v1/pages/{blog_with_streamfield.id}/", **auth_header
         )

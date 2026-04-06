@@ -97,7 +97,7 @@ StructBlock values are objects whose keys match the child block names:
 }
 ```
 
-The keys and types depend on the block definition in your Wagtail model. Use the [Schema Discovery API](../api/schema-discovery.md) to inspect the expected structure.
+The keys and types depend on the block definition in your Wagtail model. Use the [Schema Discovery API](../api/schema-discovery.md) to inspect the expected structure — the `streamfield_blocks` section of the schema response lists every block type, its value schema, and nested StructBlock/ListBlock definitions.
 
 ## ListBlock
 

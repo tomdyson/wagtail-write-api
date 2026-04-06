@@ -34,6 +34,8 @@ GET /pages/
 | `parent` | int | Direct children of this page ID |
 | `descendant_of` | int | All descendants of this page ID |
 | `status` | string | `draft`, `live`, or `live+draft` |
+| `slug` | string | Exact slug match (may return multiple if slug exists under different parents) |
+| `path` | string | Exact URL path match, e.g. `/blog/my-post/` (always 0 or 1 result) |
 | `search` | string | Full-text search |
 | `order` | string | Sort field, e.g. `title` or `-first_published_at` |
 | `offset` | int | Pagination offset (default: 0) |
@@ -155,10 +157,20 @@ Content-Type: application/json
 }
 ```
 
+The `parent` field also accepts a URL path string, which the server resolves to a page ID:
+
+```json
+{
+  "type": "blog.BlogPage",
+  "parent": "/blog/",
+  "title": "My New Post"
+}
+```
+
 | Field | Required | Description |
 |-------|----------|-------------|
 | `type` | Yes | Page type as `app_label.ModelName` |
-| `parent` | Yes | Parent page ID |
+| `parent` | Yes | Parent page ID (integer) or URL path (string, e.g. `"/blog/"`) |
 | `title` | Yes | Page title |
 | `slug` | No | Auto-generated from title if omitted |
 | `action` | No | Set to `"publish"` to publish immediately |

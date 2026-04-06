@@ -98,6 +98,55 @@ class TestCreatePage:
         assert len(data["authors"]) == 2
         assert data["authors"][0]["name"] == "Alice"
 
+    def test_create_with_parent_path(self, api_client, auth_header, home_page):
+        """Accept a URL path string for the parent field."""
+        response = api_client.post(
+            "/api/write/v1/pages/",
+            data=json.dumps({"type": "testapp.SimplePage", "parent": "/", "title": "Path Parent"}),
+            content_type="application/json",
+            **auth_header,
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["title"] == "Path Parent"
+        assert data["meta"]["parent_id"] == home_page.id
+
+    def test_create_with_nested_parent_path(self, api_client, auth_header, blog_tree):
+        """Accept a nested path like /blog/ for the parent field."""
+        response = api_client.post(
+            "/api/write/v1/pages/",
+            data=json.dumps(
+                {
+                    "type": "testapp.BlogPage",
+                    "parent": "/blog/",
+                    "title": "Path Nested",
+                }
+            ),
+            content_type="application/json",
+            **auth_header,
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["meta"]["parent_id"] == blog_tree["blog_index"].id
+
+    def test_create_with_invalid_parent_path_returns_422(self, api_client, auth_header, home_page):
+        """A path that doesn't resolve returns 422."""
+        response = api_client.post(
+            "/api/write/v1/pages/",
+            data=json.dumps(
+                {
+                    "type": "testapp.SimplePage",
+                    "parent": "/nonexistent/path/",
+                    "title": "Bad Path",
+                }
+            ),
+            content_type="application/json",
+            **auth_header,
+        )
+        assert response.status_code == 422
+        data = response.json()
+        assert "No page found at path" in data["message"]
+
     def test_create_without_auth_returns_401(self, api_client, home_page):
         response = api_client.post(
             "/api/write/v1/pages/",
@@ -122,9 +171,7 @@ class TestCreatePage:
         )
         assert response.status_code == 422
 
-    def test_create_invalid_streamfield_data_returns_422(
-        self, api_client, auth_header, blog_tree
-    ):
+    def test_create_invalid_streamfield_data_returns_422(self, api_client, auth_header, blog_tree):
         """Passing a dict instead of a list for a StreamField returns 422, not 500."""
         response = api_client.post(
             "/api/write/v1/pages/",
@@ -212,9 +259,7 @@ class TestUpdatePage:
 @pytest.mark.django_db
 class TestDeletePage:
     def test_delete_page(self, api_client, auth_header, home_page):
-        page = home_page.add_child(
-            instance=SimplePage(title="To Delete", slug="to-delete")
-        )
+        page = home_page.add_child(instance=SimplePage(title="To Delete", slug="to-delete"))
         page.save_revision()
         page_id = page.id
 

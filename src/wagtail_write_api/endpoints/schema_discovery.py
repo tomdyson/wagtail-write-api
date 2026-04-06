@@ -48,11 +48,15 @@ def get_page_type_schema(request, type_str: str):
 
         raise Http404(f"Unknown page type: {type_str}")
 
+    model_class = _resolve_model(type_str)
+    streamfield_meta = _get_streamfield_meta(model_class) if model_class else {}
+
     return {
         "type": type_str,
         "create_schema": create_schema.model_json_schema(),
         "patch_schema": patch_schema.model_json_schema(),
         "read_schema": read_schema.model_json_schema(),
+        "streamfield_blocks": streamfield_meta,
     }
 
 
@@ -64,3 +68,99 @@ def _resolve_model(type_str):
         return apps.get_model(app_label, model_name)
     except (ValueError, LookupError):
         return None
+
+
+def _get_streamfield_meta(model_class):
+    """Introspect StreamField definitions and return block type schemas."""
+    from wagtail.fields import StreamField
+
+    result = {}
+    for field in model_class._meta.get_fields():
+        if isinstance(field, StreamField):
+            stream_block = field.stream_block
+            block_types = []
+            for name, block in stream_block.child_blocks.items():
+                block_types.append({"type": name, "schema": _describe_block(block)})
+            result[field.name] = block_types
+    return result
+
+
+def _describe_block(block):
+    """Produce a JSON-serializable schema description for a Wagtail block."""
+    from wagtail.blocks import (
+        BooleanBlock,
+        CharBlock,
+        ChoiceBlock,
+        DateBlock,
+        DateTimeBlock,
+        EmailBlock,
+        FloatBlock,
+        IntegerBlock,
+        ListBlock,
+        PageChooserBlock,
+        RichTextBlock,
+        StreamBlock,
+        StructBlock,
+        TextBlock,
+        URLBlock,
+    )
+    from wagtail.images.blocks import ImageChooserBlock
+
+    if isinstance(block, StructBlock):
+        properties = {}
+        for child_name, child_block in block.child_blocks.items():
+            child_schema = _describe_block(child_block)
+            child_schema["required"] = getattr(child_block.meta, "required", True)
+            properties[child_name] = child_schema
+        return {"type": "object", "properties": properties}
+
+    if isinstance(block, ListBlock):
+        return {"type": "array", "items": _describe_block(block.child_block)}
+
+    if isinstance(block, StreamBlock):
+        block_types = []
+        for name, child_block in block.child_blocks.items():
+            block_types.append({"type": name, "schema": _describe_block(child_block)})
+        return {"type": "streamfield", "block_types": block_types}
+
+    if isinstance(block, ChoiceBlock):
+        choices = [
+            choice[0] for choice in block.field.choices if choice[0] not in (None, "")
+        ]
+        return {"type": "string", "enum": choices}
+
+    if isinstance(block, RichTextBlock):
+        return {"type": "richtext"}
+
+    if isinstance(block, ImageChooserBlock):
+        return {"type": "image_chooser"}
+
+    if isinstance(block, PageChooserBlock):
+        return {"type": "page_chooser"}
+
+    if isinstance(block, BooleanBlock):
+        return {"type": "boolean"}
+
+    if isinstance(block, IntegerBlock):
+        return {"type": "integer"}
+
+    if isinstance(block, FloatBlock):
+        return {"type": "float"}
+
+    if isinstance(block, (DateTimeBlock,)):
+        return {"type": "datetime"}
+
+    if isinstance(block, (DateBlock,)):
+        return {"type": "date"}
+
+    if isinstance(block, URLBlock):
+        return {"type": "url"}
+
+    if isinstance(block, EmailBlock):
+        return {"type": "email"}
+
+    if isinstance(block, (CharBlock, TextBlock)):
+        return {"type": "string"}
+
+    # Fallback for unknown block types
+    return {"type": block.__class__.__name__}

@@ -53,9 +53,7 @@ class TestListPages:
         assert response.status_code == 401
 
     def test_filter_by_type(self, api_client, auth_header, page_tree):
-        response = api_client.get(
-            "/api/write/v1/pages/?type=testapp.BlogPage", **auth_header
-        )
+        response = api_client.get("/api/write/v1/pages/?type=testapp.BlogPage", **auth_header)
         assert response.status_code == 200
         data = response.json()
         for item in data["items"]:
@@ -63,35 +61,27 @@ class TestListPages:
 
     def test_filter_by_parent(self, api_client, auth_header, page_tree):
         parent_id = page_tree["blog_index"].id
-        response = api_client.get(
-            f"/api/write/v1/pages/?parent={parent_id}", **auth_header
-        )
+        response = api_client.get(f"/api/write/v1/pages/?parent={parent_id}", **auth_header)
         assert response.status_code == 200
         data = response.json()
         assert len(data["items"]) == 2  # blog1 and blog2
 
     def test_filter_by_status_live(self, api_client, auth_header, page_tree):
-        response = api_client.get(
-            "/api/write/v1/pages/?status=live", **auth_header
-        )
+        response = api_client.get("/api/write/v1/pages/?status=live", **auth_header)
         assert response.status_code == 200
         data = response.json()
         for item in data["items"]:
             assert item["meta"]["live"] is True
 
     def test_filter_by_status_draft(self, api_client, auth_header, page_tree):
-        response = api_client.get(
-            "/api/write/v1/pages/?status=draft", **auth_header
-        )
+        response = api_client.get("/api/write/v1/pages/?status=draft", **auth_header)
         assert response.status_code == 200
         data = response.json()
         for item in data["items"]:
             assert item["meta"]["live"] is False
 
     def test_pagination(self, api_client, auth_header, page_tree):
-        response = api_client.get(
-            "/api/write/v1/pages/?offset=0&limit=1", **auth_header
-        )
+        response = api_client.get("/api/write/v1/pages/?offset=0&limit=1", **auth_header)
         assert response.status_code == 200
         data = response.json()
         assert len(data["items"]) == 1
@@ -139,9 +129,7 @@ class TestDetailPage:
         blog1.save_revision()
         # Don't publish — so live revision still has "First Post"
 
-        response = api_client.get(
-            f"/api/write/v1/pages/{blog1.id}/?version=live", **auth_header
-        )
+        response = api_client.get(f"/api/write/v1/pages/{blog1.id}/?version=live", **auth_header)
         data = response.json()
         assert data["title"] == "First Post"
 
@@ -154,3 +142,57 @@ class TestDetailPage:
         response = api_client.get(f"/api/write/v1/pages/{page_id}/", **auth_header)
         data = response.json()
         assert "published_date" in data
+
+
+@pytest.mark.django_db
+class TestFilterBySlug:
+    def test_filter_by_slug(self, api_client, auth_header, page_tree):
+        response = api_client.get("/api/write/v1/pages/?slug=first-post", **auth_header)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 1
+        assert data["items"][0]["slug"] == "first-post"
+
+    def test_filter_by_slug_no_match(self, api_client, auth_header, page_tree):
+        response = api_client.get("/api/write/v1/pages/?slug=nonexistent-slug", **auth_header)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 0
+
+    def test_filter_by_slug_combined_with_type(self, api_client, auth_header, page_tree):
+        response = api_client.get(
+            "/api/write/v1/pages/?slug=first-post&type=testapp.BlogPage", **auth_header
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 1
+        assert data["items"][0]["meta"]["type"] == "testapp.BlogPage"
+
+
+@pytest.mark.django_db
+class TestFilterByPath:
+    def test_filter_by_path(self, api_client, auth_header, page_tree):
+        response = api_client.get("/api/write/v1/pages/?path=/blog/first-post/", **auth_header)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 1
+        assert data["items"][0]["slug"] == "first-post"
+
+    def test_filter_by_path_no_trailing_slash(self, api_client, auth_header, page_tree):
+        response = api_client.get("/api/write/v1/pages/?path=/blog/first-post", **auth_header)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 1
+
+    def test_filter_by_path_no_match(self, api_client, auth_header, page_tree):
+        response = api_client.get("/api/write/v1/pages/?path=/nonexistent/path/", **auth_header)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 0
+
+    def test_filter_by_path_root_level(self, api_client, auth_header, page_tree):
+        response = api_client.get("/api/write/v1/pages/?path=/simple/", **auth_header)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 1
+        assert data["items"][0]["slug"] == "simple"

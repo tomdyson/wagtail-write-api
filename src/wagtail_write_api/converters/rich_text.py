@@ -32,6 +32,7 @@ def convert_rich_text_input(value) -> str:
 
 def markdown_to_wagtail(md_text: str) -> str:
     """Convert Markdown to Wagtail's internal rich text format."""
+
     # Pre-process wagtail:// links before markdown conversion
     # Convert [text](wagtail://page/N) to placeholder that survives markdown
     def replace_wagtail_link(match):
