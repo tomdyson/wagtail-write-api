@@ -131,11 +131,13 @@ class TestDetailPage:
         assert data["title"] == "Updated Title (draft)"
 
     def test_detail_with_version_live(self, api_client, auth_header, page_tree):
-        """?version=live returns the published content."""
+        """?version=live returns the published content, not the draft DB row."""
         blog1 = page_tree["blog1"]
+        blog1.refresh_from_db()  # pick up live_revision_id set by publish()
         blog1.title = "Updated Title (draft)"
+        blog1.save()  # updates the DB row (as PATCH does)
         blog1.save_revision()
-        # Don't publish
+        # Don't publish — so live revision still has "First Post"
 
         response = api_client.get(
             f"/api/write/v1/pages/{blog1.id}/?version=live", **auth_header

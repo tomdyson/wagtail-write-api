@@ -109,7 +109,8 @@ def get_page(request, page_id: int, version: Optional[str] = None):
 
     # Draft-aware reads
     if version == "live":
-        source = specific
+        live_rev = specific.live_revision
+        source = live_rev.as_object() if live_rev else specific
     elif specific.has_unpublished_changes and specific.get_latest_revision():
         source = specific.get_latest_revision().as_object()
     else:
