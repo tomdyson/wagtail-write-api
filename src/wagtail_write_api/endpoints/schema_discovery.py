@@ -124,7 +124,9 @@ def _describe_block(block):
         return {"type": "streamfield", "block_types": block_types}
 
     if isinstance(block, ChoiceBlock):
-        choices = [choice[0] for choice in block.field.choices if choice[0]]
+        choices = [
+            choice[0] for choice in block.field.choices if choice[0] not in (None, "")
+        ]
         return {"type": "string", "enum": choices}
 
     if isinstance(block, RichTextBlock):
