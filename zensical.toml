@@ -15,6 +15,7 @@ nav = [
     { "API Reference" = [
         "api/pages.md",
         "api/images.md",
+        "api/snippets.md",
         "api/schema-discovery.md",
         "api/authentication.md",
     ]},
