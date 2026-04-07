@@ -568,7 +568,28 @@ def _serialize_page(source, page, type_str, user):
         "user_permissions": get_user_page_permissions(user, page),
     }
 
+    data["hints"] = _build_hints(page, type_str)
+
     return data
+
+
+def _build_hints(page, type_str):
+    """Build actionable hints for LLM/CLI consumers."""
+    hints = {}
+
+    if not page.live:
+        hints["publish"] = f"wagapi pages publish {page.id}"
+    elif page.has_unpublished_changes:
+        hints["publish"] = f"wagapi pages publish {page.id}"
+
+    if page.live:
+        hints["unpublish"] = f"wagapi pages unpublish {page.id}"
+
+    hints["edit"] = f"wagapi pages update {page.id} --title '...' --body '...'"
+    hints["view"] = f"wagapi pages get {page.id}"
+    hints["delete"] = f"wagapi pages delete {page.id}"
+
+    return hints
 
 
 def _serialize_value(val):

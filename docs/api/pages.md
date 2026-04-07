@@ -122,12 +122,22 @@ If the page has no unpublished changes, the draft and live content are identical
     "parent_type": "blog.BlogIndexPage",
     "children_count": 0,
     "user_permissions": ["add", "change", "publish", "delete"]
+  },
+  "hints": {
+    "publish": "wagapi pages publish 5",
+    "unpublish": "wagapi pages unpublish 5",
+    "edit": "wagapi pages update 5 --title '...' --body '...'",
+    "view": "wagapi pages get 5",
+    "delete": "wagapi pages delete 5"
   }
 }
 ```
 
 !!! note "`meta.user_permissions`"
     Tells the client what the authenticated user can do with this page. A mobile app can use this to show/hide publish buttons, lock indicators, etc. without extra permission-checking requests.
+
+!!! note "`hints`"
+    The `hints` object provides ready-to-use CLI commands for common next actions. This is designed for LLM orchestration — an agent can read the hints and immediately know what command to run next without constructing it from scratch. The `publish` hint is only present when the page is unpublished or has unpublished changes.
 
 ---
 

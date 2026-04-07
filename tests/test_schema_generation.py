@@ -1,6 +1,15 @@
+import json
+
 import pytest
 from datetime import date, datetime
 from typing import Optional
+
+from django.contrib.auth.models import User
+from django.test import Client, TestCase
+from wagtail.models import Page, Site
+
+from testapp.models import BlogIndexPage, BlogPage, SimplePage
+from wagtail_write_api.models import ApiToken
 
 
 @pytest.mark.django_db
@@ -200,3 +209,130 @@ class TestSchemaDiscoveryEndpoint:
         # map_embed is URLBlock
         url_block = next(bt for bt in block_types if bt["type"] == "map_embed")
         assert url_block["schema"]["type"] == "url"
+
+
+class TestAvailableParents(TestCase):
+    """Tests for the available_parents field in the schema list response."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_superuser("admin_ap", "ap@test.com", "pw")
+        token, _ = ApiToken.objects.get_or_create(user=cls.admin)
+        cls.auth = {"HTTP_AUTHORIZATION": f"Bearer {token.key}"}
+
+        root = Page.objects.filter(depth=1).first()
+        cls.home = root.add_child(title="Home", slug="home-ap")
+        Site.objects.update_or_create(
+            is_default_site=True,
+            defaults={"hostname": "localhost", "root_page": cls.home},
+        )
+        cls.blog_index = cls.home.add_child(
+            instance=BlogIndexPage(title="Blog", slug="blog", intro="Blog intro")
+        )
+        cls.blog_index.save_revision().publish()
+
+    def test_schema_list_includes_available_parents(self):
+        response = self.client.get("/api/write/v1/schema/", **self.auth)
+        assert response.status_code == 200
+        data = response.json()
+        page_types = data["page_types"]
+        for pt in page_types:
+            assert "available_parents" in pt
+
+    def test_blog_page_available_parents_includes_blog_index(self):
+        response = self.client.get("/api/write/v1/schema/", **self.auth)
+        data = response.json()
+        blog_type = next(pt for pt in data["page_types"] if pt["type"] == "testapp.BlogPage")
+        parent_ids = [p["id"] for p in blog_type["available_parents"]]
+        assert self.blog_index.id in parent_ids
+
+    def test_available_parent_has_expected_fields(self):
+        response = self.client.get("/api/write/v1/schema/", **self.auth)
+        data = response.json()
+        blog_type = next(pt for pt in data["page_types"] if pt["type"] == "testapp.BlogPage")
+        parent = next(p for p in blog_type["available_parents"] if p["id"] == self.blog_index.id)
+        assert parent["title"] == "Blog"
+        assert parent["type"] == "testapp.BlogIndexPage"
+        assert parent["url_path"] == "/blog/"
+
+
+class TestHintsInPageResponse(TestCase):
+    """Tests for the hints field in page create/detail responses."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_superuser("admin_hints", "hints@test.com", "pw")
+        token, _ = ApiToken.objects.get_or_create(user=cls.admin)
+        cls.auth = {"HTTP_AUTHORIZATION": f"Bearer {token.key}"}
+
+        root = Page.objects.filter(depth=1).first()
+        cls.home = root.add_child(title="Home", slug="home-hints")
+        Site.objects.update_or_create(
+            is_default_site=True,
+            defaults={"hostname": "localhost", "root_page": cls.home},
+        )
+
+    def test_create_draft_includes_publish_hint(self):
+        response = self.client.post(
+            "/api/write/v1/pages/",
+            data=json.dumps(
+                {"type": "testapp.SimplePage", "parent": self.home.id, "title": "Draft"}
+            ),
+            content_type="application/json",
+            **self.auth,
+        )
+        data = response.json()
+        assert "hints" in data
+        assert "publish" in data["hints"]
+        assert str(data["id"]) in data["hints"]["publish"]
+
+    def test_create_published_includes_unpublish_hint(self):
+        response = self.client.post(
+            "/api/write/v1/pages/",
+            data=json.dumps(
+                {
+                    "type": "testapp.SimplePage",
+                    "parent": self.home.id,
+                    "title": "Published",
+                    "action": "publish",
+                }
+            ),
+            content_type="application/json",
+            **self.auth,
+        )
+        data = response.json()
+        assert "hints" in data
+        assert "unpublish" in data["hints"]
+
+    def test_hints_include_edit_view_delete(self):
+        response = self.client.post(
+            "/api/write/v1/pages/",
+            data=json.dumps(
+                {"type": "testapp.SimplePage", "parent": self.home.id, "title": "Test"}
+            ),
+            content_type="application/json",
+            **self.auth,
+        )
+        data = response.json()
+        hints = data["hints"]
+        assert "edit" in hints
+        assert "view" in hints
+        assert "delete" in hints
+
+    def test_detail_endpoint_includes_hints(self):
+        # Create a page first
+        response = self.client.post(
+            "/api/write/v1/pages/",
+            data=json.dumps(
+                {"type": "testapp.SimplePage", "parent": self.home.id, "title": "Detail Test"}
+            ),
+            content_type="application/json",
+            **self.auth,
+        )
+        page_id = response.json()["id"]
+
+        # GET should also include hints
+        response = self.client.get(f"/api/write/v1/pages/{page_id}/", **self.auth)
+        data = response.json()
+        assert "hints" in data
+        assert "publish" in data["hints"]

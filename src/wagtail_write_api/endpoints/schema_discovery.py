@@ -24,6 +24,8 @@ def list_page_types(request):
         read_schema, _, _ = schema_registry.get_schemas(type_str)
         fields_summary = list(read_schema.model_fields.keys())
 
+        available_parents = _get_available_parents(model_class)
+
         types.append(
             {
                 "type": type_str,
@@ -31,6 +33,7 @@ def list_page_types(request):
                 "allowed_parent_types": allowed_parents,
                 "allowed_subpage_types": allowed_children,
                 "fields_summary": fields_summary,
+                "available_parents": available_parents,
             }
         )
 
@@ -60,6 +63,27 @@ def get_page_type_schema(request, type_str: str):
         "streamfield_blocks": streamfield_meta,
         "richtext_fields": richtext_fields,
     }
+
+
+def _get_available_parents(model_class):
+    """Return actual page instances that can serve as parents for this page type."""
+    from wagtail_write_api.endpoints.pages import _get_url_path
+
+    parent_models = model_class.allowed_parent_page_models()
+    result = []
+    for parent_model in parent_models:
+        type_str = f"{parent_model._meta.app_label}.{parent_model.__name__}"
+        pages = parent_model.objects.all().order_by("path")[:10]
+        for page in pages:
+            result.append(
+                {
+                    "id": page.id,
+                    "title": page.title,
+                    "type": type_str,
+                    "url_path": _get_url_path(page),
+                }
+            )
+    return result
 
 
 def _resolve_model(type_str):

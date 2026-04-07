@@ -27,20 +27,26 @@ GET /schema/
       "verbose_name": "blog page",
       "allowed_parent_types": ["blog.BlogIndexPage"],
       "allowed_subpage_types": [],
-      "fields_summary": ["id", "title", "slug", "published_date", "body", "authors"]
+      "fields_summary": ["id", "title", "slug", "published_date", "body", "authors"],
+      "available_parents": [
+        {"id": 3, "title": "Blog", "type": "blog.BlogIndexPage", "url_path": "/blog/"}
+      ]
     },
     {
       "type": "blog.BlogIndexPage",
       "verbose_name": "blog index page",
       "allowed_parent_types": ["wagtailcore.Page", "home.HomePage"],
       "allowed_subpage_types": ["blog.BlogPage"],
-      "fields_summary": ["id", "title", "slug", "intro"]
+      "fields_summary": ["id", "title", "slug", "intro"],
+      "available_parents": [
+        {"id": 1, "title": "Root", "type": "wagtailcore.Page", "url_path": "/"}
+      ]
     }
   ]
 }
 ```
 
-The `allowed_parent_types` and `allowed_subpage_types` reflect the page model's `parent_page_types` and `subpage_types` attributes. Use these to build a valid page creation UI -- a client knows which page types can be created under a given parent.
+The `allowed_parent_types` and `allowed_subpage_types` reflect the page model's `parent_page_types` and `subpage_types` attributes. The `available_parents` field lists actual page instances (up to 10 per parent type) that can serve as parents, including their `id`, `title`, `type`, and `url_path`. This allows clients to skip a separate `pages list` call when creating pages — the parent ID is already available in the schema response.
 
 ---
 
