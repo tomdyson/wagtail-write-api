@@ -68,15 +68,19 @@ def get_page_type_schema(request, type_str: str):
 def _get_available_parents(model_class):
     """Return actual page instances that can serve as parents for this page type.
 
-    Skips wagtailcore.Page (the base class) as a parent model since every page
-    is a Page instance, making it noisy and unhelpful. Concrete parent types
-    like BlogIndexPage are far more useful signals for clients.
+    Only populated when the page type has a real parent constraint (i.e.
+    wagtailcore.Page is NOT among its allowed parents).  When Page is allowed,
+    almost every page in the tree qualifies, so listing instances is noise
+    rather than signal — return an empty list and let the client query if needed.
     """
     from wagtail.models import Page
 
     from wagtail_write_api.endpoints.pages import _get_url_path
 
-    parent_models = [m for m in model_class.allowed_parent_page_models() if m is not Page]
+    parent_models = model_class.allowed_parent_page_models()
+    if Page in parent_models:
+        return []
+
     result = []
     for parent_model in parent_models:
         type_str = f"{parent_model._meta.app_label}.{parent_model.__name__}"

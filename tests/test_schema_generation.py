@@ -255,6 +255,14 @@ class TestAvailableParents(TestCase):
         assert parent["type"] == "testapp.BlogIndexPage"
         assert parent["url_path"] == "/blog/"
 
+    def test_unconstrained_type_has_empty_available_parents(self):
+        """Page types that allow wagtailcore.Page as parent are unconstrained —
+        available_parents should be empty to avoid listing every page."""
+        response = self.client.get("/api/write/v1/schema/", **self.auth)
+        data = response.json()
+        simple_type = next(pt for pt in data["page_types"] if pt["type"] == "testapp.SimplePage")
+        assert simple_type["available_parents"] == []
+
 
 class TestHintsInPageResponse(TestCase):
     """Tests for the hints field in page create/detail responses."""

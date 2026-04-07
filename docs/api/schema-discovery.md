@@ -46,7 +46,9 @@ GET /schema/
 }
 ```
 
-The `allowed_parent_types` and `allowed_subpage_types` reflect the page model's `parent_page_types` and `subpage_types` attributes. The `available_parents` field lists actual page instances (up to 10 per parent type) that can serve as parents, including their `id`, `title`, `type`, and `url_path`. This allows clients to skip a separate `pages list` call when creating pages — the parent ID is already available in the schema response.
+The `allowed_parent_types` and `allowed_subpage_types` reflect the page model's `parent_page_types` and `subpage_types` attributes (both directions of the constraint are checked). The `available_parents` field lists actual page instances (up to 10 per parent type) that can serve as parents, including their `id`, `title`, `type`, and `url_path`. This allows clients to skip a separate `pages list` call when creating pages — the parent ID is already available in the schema response.
+
+`available_parents` is only populated when the page type has a real constraint (i.e. `wagtailcore.Page` is not among its allowed parents). Unconstrained types return an empty list — almost every page qualifies, so listing instances would be noise rather than signal.
 
 ---
 
