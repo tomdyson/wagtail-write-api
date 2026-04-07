@@ -168,11 +168,55 @@ curl -s -X DELETE \
 
 Returns `204 No Content` on success.
 
+### List snippets
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" \
+     "http://localhost:8000/api/write/v1/snippets/?type=testapp.Category" | python -m json.tool
+```
+
+### Create a snippet
+
+```bash
+curl -s -X POST \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"type": "testapp.Category", "name": "Music", "slug": "music"}' \
+     http://localhost:8000/api/write/v1/snippets/ | python -m json.tool
+```
+
+### Update a snippet
+
+```bash
+curl -s -X PATCH \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"name": "Music & Arts"}' \
+     "http://localhost:8000/api/write/v1/snippets/4/?type=testapp.Category" | python -m json.tool
+```
+
+### Delete a snippet
+
+```bash
+curl -s -X DELETE \
+     -H "Authorization: Bearer $TOKEN" \
+     "http://localhost:8000/api/write/v1/snippets/4/?type=testapp.Category"
+```
+
+Returns `204 No Content` on success.
+
 ### Discover available page types
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
      http://localhost:8000/api/write/v1/schema/ | python -m json.tool
+```
+
+### Discover available snippet types
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" \
+     http://localhost:8000/api/write/v1/schema/snippets/ | python -m json.tool
 ```
 
 ## Test models
@@ -246,6 +290,29 @@ class EventPage(Page):
 
     write_api_exclude = ["legacy_id"]
 ```
+
+### Category (snippet)
+
+A snippet model with a unique slug. Tests basic snippet CRUD and unique constraint validation.
+
+```python
+@register_snippet
+class Category(models.Model):
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True)
+```
+
+### Tag (snippet)
+
+A minimal snippet model with a single field.
+
+```python
+@register_snippet
+class Tag(models.Model):
+    name = models.CharField(max_length=255)
+```
+
+`BlogPage` also has a `ForeignKey(Category)` and a `SnippetChooserBlock("testapp.Category")` in its StreamField, to exercise both snippet chooser patterns.
 
 ## Seed command
 

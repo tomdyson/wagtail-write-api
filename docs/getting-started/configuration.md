@@ -10,6 +10,7 @@ Add a `WAGTAIL_WRITE_API` dictionary to your Django settings:
 WAGTAIL_WRITE_API = {
     "RICH_TEXT_OUTPUT_FORMAT": "html",
     "EXCLUDE_PAGE_TYPES": [],
+    "EXCLUDE_SNIPPET_TYPES": [],
     "DOCS_URL": "/docs",
     "REQUIRE_AUTH_FOR_READ": True,
     "DEFAULT_PAGE_SIZE": 20,
@@ -46,6 +47,16 @@ A list of page type strings to exclude from the API entirely. These types won't 
 
 ```python
 "EXCLUDE_PAGE_TYPES": ["myapp.InternalPage", "myapp.LandingPage"]
+```
+
+### `EXCLUDE_SNIPPET_TYPES`
+
+**Default:** `[]`
+
+A list of snippet type strings to exclude from the API entirely. These types won't appear in schema discovery or be available for CRUD operations.
+
+```python
+"EXCLUDE_SNIPPET_TYPES": ["myapp.InternalTag"]
 ```
 
 ### `DOCS_URL`

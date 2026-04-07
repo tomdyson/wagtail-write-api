@@ -17,8 +17,9 @@ If you're building a mobile CMS editor, a CI/CD content pipeline, or a third-par
 
 ## Features
 
-- **Schema discovery** -- query available page types and their field schemas
+- **Schema discovery** -- query available page types, snippet types, and their field schemas
 - **Full Page CRUD** -- create, read, update, and delete pages with proper revision tracking
+- **Snippet CRUD** -- manage models registered with `@register_snippet` (categories, tags, reusable content)
 - **Draft-aware reads** -- GET returns the latest draft by default, not just the published version
 - **Workflow actions** -- publish, unpublish, submit for moderation, copy, move
 - **StreamField support** -- read and write StreamField data with full round-trip fidelity

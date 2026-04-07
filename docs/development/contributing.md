@@ -30,6 +30,8 @@ The test suite uses a Django test database with models defined in `example/testa
 | `test_rich_text.py` | Rich text format conversion |
 | `test_streamfield.py` | StreamField read/write and round-trip |
 | `test_images_api.py` | Image upload, CRUD, renditions |
+| `test_snippets_api.py` | Snippet CRUD (list, get, create, update, delete) |
+| `test_snippet_schema.py` | Snippet schema discovery |
 | `test_smoke.py` | App loads, docs endpoint reachable |
 
 ## Running the example app
@@ -47,6 +49,7 @@ This creates:
 
 - **Users:** admin, editor, moderator, reviewer (password: `password` for all)
 - **Pages:** Home, About, Blog (with 5 posts), Events (with 3 events)
+- **Snippets:** 3 categories, 5 tags
 - **API tokens:** printed to stdout on seed
 
 After seeding, open:
@@ -78,6 +81,7 @@ wagtail-write-api/
 │   ├── endpoints/            # API endpoint handlers
 │   │   ├── pages.py          # Page CRUD + workflow
 │   │   ├── images.py         # Image CRUD + upload
+│   │   ├── snippets.py       # Snippet CRUD
 │   │   └── schema_discovery.py
 │   └── converters/           # Format conversion
 │       └── rich_text.py      # Markdown/HTML → Wagtail internal

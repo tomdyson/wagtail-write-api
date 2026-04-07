@@ -1,6 +1,6 @@
 # Schema Discovery API
 
-Discover what page types exist, what fields they accept, and their parent/child constraints. Useful for building dynamic editors that adapt to the site's content model.
+Discover what page types and snippet types exist, what fields they accept, and their constraints. Useful for building dynamic editors that adapt to the site's content model.
 
 ## Endpoints
 
@@ -8,6 +8,8 @@ Discover what page types exist, what fields they accept, and their parent/child 
 |--------|------|-------------|
 | `GET` | `/schema/` | List all page types |
 | `GET` | `/schema/{type}/` | Full schema for a page type |
+| `GET` | `/schema/snippets/` | List all snippet types |
+| `GET` | `/schema/snippets/{type}/` | Full schema for a snippet type |
 
 ---
 
@@ -134,6 +136,67 @@ The `create_schema`, `patch_schema`, and `read_schema` are Pydantic-generated JS
 | `object` | StructBlock (has `properties` with child block schemas) |
 | `array` | ListBlock (has `items` with the child block schema) |
 | `streamfield` | Nested StreamBlock (has `block_types` list) |
+
+---
+
+## List snippet types
+
+```
+GET /schema/snippets/
+```
+
+### Response
+
+```json
+{
+  "snippet_types": [
+    {
+      "type": "testapp.Category",
+      "verbose_name": "category",
+      "fields_summary": ["name", "slug", "id"]
+    },
+    {
+      "type": "testapp.Tag",
+      "verbose_name": "tag",
+      "fields_summary": ["name", "id"]
+    }
+  ]
+}
+```
+
+Snippet types are simpler than page types -- no `allowed_parent_types`, `allowed_subpage_types`, or `available_parents` since snippets have no tree hierarchy.
+
+---
+
+## Get snippet type schema
+
+```
+GET /schema/snippets/testapp.Category/
+```
+
+Returns the same schema structure as page types, but `create_schema` does not include `parent` or `action` fields (snippets have no tree or publish workflow):
+
+```json
+{
+  "type": "testapp.Category",
+  "create_schema": {
+    "title": "CategoryCreate",
+    "type": "object",
+    "properties": {
+      "type": {"type": "string"},
+      "name": {"type": "string"},
+      "slug": {"anyOf": [{"type": "string"}, {"type": "null"}]}
+    },
+    "required": ["type", "name"]
+  },
+  "patch_schema": { ... },
+  "read_schema": { ... },
+  "streamfield_blocks": {},
+  "richtext_fields": []
+}
+```
+
+Returns `404` if the snippet type is not registered.
 
 ---
 
