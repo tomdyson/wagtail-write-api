@@ -275,6 +275,75 @@ class TestUpdatePage:
         assert data["body"] == "Keep this body"
 
 
+class TestCreatePublishAtomicity(TestCase):
+    """When a user can add pages but cannot publish, create with
+    action=publish must not leave an orphan draft behind."""
+
+    @classmethod
+    def setUpTestData(cls):
+        # Editor user with add + change but NOT publish
+        cls.editor = User.objects.create_user("editor_atom", password="pw")
+        cls.editor.is_staff = True
+        cls.editor.save()
+        token, _ = ApiToken.objects.get_or_create(user=cls.editor)
+        cls.editor_auth = {"HTTP_AUTHORIZATION": f"Bearer {token.key}"}
+
+        editors_group = Group.objects.create(name="editors_atom")
+        cls.editor.groups.add(editors_group)
+
+        root = Page.objects.filter(depth=1).first()
+        cls.home = root.add_child(title="Home", slug="home-atom")
+        Site.objects.update_or_create(
+            is_default_site=True,
+            defaults={"hostname": "localhost", "root_page": cls.home},
+        )
+
+        # Grant add + change (but NOT publish) on home page
+        for perm_type in ("add", "change"):
+            GroupPagePermission.objects.create(
+                group=editors_group,
+                page=cls.home,
+                permission_type=perm_type,
+            )
+
+    def test_create_with_publish_rolls_back_on_permission_denied(self):
+        count_before = Page.objects.count()
+        response = self.client.post(
+            "/api/write/v1/pages/",
+            data=json.dumps(
+                {
+                    "type": "testapp.SimplePage",
+                    "parent": self.home.id,
+                    "title": "Should Not Persist",
+                    "action": "publish",
+                }
+            ),
+            content_type="application/json",
+            **self.editor_auth,
+        )
+        assert response.status_code == 403
+        assert Page.objects.count() == count_before, (
+            "Page should not persist when publish is denied"
+        )
+
+    def test_create_without_publish_succeeds_for_editor(self):
+        response = self.client.post(
+            "/api/write/v1/pages/",
+            data=json.dumps(
+                {
+                    "type": "testapp.SimplePage",
+                    "parent": self.home.id,
+                    "title": "Editor Draft",
+                }
+            ),
+            content_type="application/json",
+            **self.editor_auth,
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["meta"]["live"] is False
+
+
 @pytest.mark.django_db
 class TestDeletePage:
     def test_delete_page(self, api_client, auth_header, home_page):

@@ -1,6 +1,7 @@
 import json
 from typing import Optional
 
+from django.db import transaction
 from django.http import Http404, HttpResponse
 from ninja import Router
 
@@ -212,18 +213,20 @@ def create_page(request):
     # Validate before saving — full_clean() produces field-level errors
     page.full_clean(exclude=["path", "depth"])
 
-    # Add to tree and save revision
-    try:
-        parent_page.add_child(instance=page)
-    except (TypeError, ValueError) as exc:
-        return 422, {"error": "validation_error", "message": f"Failed to create page: {exc}"}
+    # Wrap create + optional publish in a transaction so that if publish
+    # raises (e.g. PermissionDenied), the page creation is rolled back.
+    with transaction.atomic():
+        try:
+            parent_page.add_child(instance=page)
+        except (TypeError, ValueError) as exc:
+            return 422, {"error": "validation_error", "message": f"Failed to create page: {exc}"}
 
-    revision = page.save_revision(user=request.user)
+        revision = page.save_revision(user=request.user)
 
-    # Optionally publish
-    if body.get("action") == "publish":
-        revision.publish(user=request.user)
-        page.refresh_from_db()
+        # Optionally publish
+        if body.get("action") == "publish":
+            revision.publish(user=request.user)
+            page.refresh_from_db()
 
     type_str_actual = f"{page._meta.app_label}.{page.__class__.__name__}"
     data = _serialize_page(page, page, type_str_actual, request.user)
@@ -258,12 +261,13 @@ def update_page(request, page_id: int):
     except (TypeError, ValueError, AttributeError) as exc:
         return 422, {"error": "validation_error", "message": f"Invalid field data: {exc}"}
 
-    page.save()
-    revision = page.save_revision(user=request.user)
+    with transaction.atomic():
+        page.save()
+        revision = page.save_revision(user=request.user)
 
-    if body.get("action") == "publish":
-        revision.publish(user=request.user)
-        page.refresh_from_db()
+        if body.get("action") == "publish":
+            revision.publish(user=request.user)
+            page.refresh_from_db()
 
     type_str = f"{page._meta.app_label}.{page.__class__.__name__}"
     data = _serialize_page(page, page, type_str, request.user)

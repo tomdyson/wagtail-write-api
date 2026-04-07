@@ -93,6 +93,20 @@ uv run python manage.py runserver
 
 The [publish workflow](.github/workflows/publish.yml) builds and uploads to PyPI automatically via trusted publishing.
 
+## Not yet supported
+
+The following Wagtail features are not yet covered by the API:
+
+- **Snippets** — models registered with `@register_snippet` (categories, tags, reusable content blocks). Pages referencing snippets via `SnippetChooserBlock` or `SnippetChooserPanel` cannot set those fields through the API.
+- **Documents** — `DocumentChooserBlock` and document uploads. Only images have API support currently.
+- **Multi-site** — the API assumes a single default site. Path resolution and `url_path` may behave unexpectedly with multiple `Site` objects.
+- **Locales / translations** — no support for `wagtail-localize` or Wagtail's built-in locale features. Pages are created in the default locale only.
+- **TableBlock, EmbedBlock, RawHTMLBlock** — StreamField round-trip works for common block types, but these specialised blocks are untested and may not serialise correctly.
+- **Scheduled publishing** — `go_live_at` / `expire_at` fields are not exposed.
+- **Search promotion and redirects** — no API coverage.
+
+Contributions welcome — see [CONTRIBUTING](docs/development/contributing.md).
+
 ## Licence
 
 BSD 3-Clause. See [LICENSE](LICENSE).
