@@ -2,18 +2,18 @@
 
 A read/write REST API for [Wagtail](https://wagtail.org/) CMS, built on [Django Ninja](https://django-ninja.dev/).
 
-Wagtail's built-in API is read-only, designed for headless frontends. This plugin adds full content management: create, edit, publish, and delete pages and images via a REST API with automatic OpenAPI documentation.
+Wagtail's [built-in API](https://docs.wagtail.org/en/stable/advanced_topics/api/) is read-only, designed for headless frontends. This plugin adds full content management: create, edit, publish, and delete pages and images via a REST API with automatic OpenAPI documentation.
 
 **[Documentation](https://tomdyson.github.io/wagtail-write-api/)**
 
 ## Features
 
+- **Schema discovery** so clients can inspect page types and their fields
 - **Page CRUD** with draft/publish workflow, revision history, copy, and move
 - **Image management** with multipart upload and configurable renditions
-- **StreamField** read/write with full round-trip fidelity
+- **StreamField** read/write with round-trip fidelity
 - **Rich text** input in Markdown, HTML, or Wagtail's internal format
-- **Schema discovery** so clients can inspect page types and their fields
-- **Wagtail permissions** enforced exactly as in the admin
+- **Wagtail permissions** enforced as in the admin
 - **OpenAPI docs** generated automatically from Pydantic schemas
 
 ## Quick start

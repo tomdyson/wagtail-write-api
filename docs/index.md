@@ -8,24 +8,24 @@ Wagtail's built-in `wagtail.api.v2` is a **read-only** API designed for headless
 
 **wagtail-write-api** is a full **read/write content management API**. It:
 
-- Introspects *all* editable fields on a page model
+- Introspects all editable fields on a page model
 - Returns data in a format suitable for editing, not just display
 - Supports the complete draft/publish workflow
 - Generates OpenAPI schemas automatically via Pydantic
 
-If you're building a mobile CMS editor, a CI/CD content pipeline, or a third-party integration that needs to both read and write Wagtail content, this is the plugin for you.
+If you're building a mobile CMS editor, a CI/CD content pipeline, or a third-party integration that needs to both read and write Wagtail content, this plugin might help.
 
 ## Features
 
+- **Schema discovery** -- query available page types and their field schemas
 - **Full Page CRUD** -- create, read, update, and delete pages with proper revision tracking
 - **Draft-aware reads** -- GET returns the latest draft by default, not just the published version
 - **Workflow actions** -- publish, unpublish, submit for moderation, copy, move
 - **StreamField support** -- read and write StreamField data with full round-trip fidelity
 - **Rich text conversion** -- accept Markdown, HTML, or Wagtail's internal format
 - **Image management** -- upload, list, update, and delete images with rendition URLs
-- **Schema discovery** -- query available page types and their field schemas
-- **OpenAPI docs** -- interactive API docs at `/docs` powered by Django Ninja
 - **Wagtail permissions** -- respects the same tree-based permission model as the admin
+- **OpenAPI docs** -- interactive API docs at `/docs`
 
 ## Quick install
 
@@ -47,7 +47,7 @@ urlpatterns = [
 ]
 ```
 
-That's it. The API auto-discovers your page types on startup, generates schemas, and serves interactive docs at `/api/write/v1/docs`.
+The API auto-discovers your page types on startup, generates schemas, and serves interactive docs at `/api/write/v1/docs`.
 
 ## Supported versions
 
