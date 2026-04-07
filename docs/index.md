@@ -1,6 +1,6 @@
 # wagtail-write-api
 
-A read/write REST API for Wagtail CMS, built on [Django Ninja](https://django-ninja.dev/).
+A read/write REST API for Wagtail CMS.
 
 ## Why?
 
