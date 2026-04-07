@@ -19,8 +19,8 @@ router = Router(tags=["pages"], auth=WagtailTokenAuth())
 def list_pages(
     request,
     type: Optional[str] = None,
-    parent: Optional[int] = None,
-    descendant_of: Optional[int] = None,
+    parent: Optional[str] = None,
+    descendant_of: Optional[str] = None,
     status: Optional[str] = None,
     search: Optional[str] = None,
     order: Optional[str] = None,
@@ -44,17 +44,23 @@ def list_pages(
 
     if parent:
         try:
-            parent_page = Page.objects.get(id=parent)
+            parent_page = Page.objects.get(id=int(parent))
+        except (ValueError, Page.DoesNotExist):
+            parent_page = _resolve_page_by_path(parent)
+        if parent_page:
             qs = qs.child_of(parent_page)
-        except Page.DoesNotExist:
-            pass
+        else:
+            qs = qs.none()
 
     if descendant_of:
         try:
-            ancestor = Page.objects.get(id=descendant_of)
+            ancestor = Page.objects.get(id=int(descendant_of))
+        except (ValueError, Page.DoesNotExist):
+            ancestor = _resolve_page_by_path(descendant_of)
+        if ancestor:
             qs = qs.descendant_of(ancestor)
-        except Page.DoesNotExist:
-            pass
+        else:
+            qs = qs.none()
 
     if status == "live":
         qs = qs.filter(live=True, has_unpublished_changes=False)

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "wagtail-write-api"
-version = "0.2.1"
+version = "0.2.2"
 description = "A read/write REST API for Wagtail CMS"
 readme = "README.md"
 license = "BSD-3-Clause"

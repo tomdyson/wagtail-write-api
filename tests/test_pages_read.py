@@ -66,6 +66,18 @@ class TestListPages:
         data = response.json()
         assert len(data["items"]) == 2  # blog1 and blog2
 
+    def test_filter_by_parent_path(self, api_client, auth_header, page_tree):
+        response = api_client.get("/api/write/v1/pages/?parent=/blog/", **auth_header)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 2  # blog1 and blog2
+
+    def test_filter_by_parent_invalid_returns_empty(self, api_client, auth_header, page_tree):
+        response = api_client.get("/api/write/v1/pages/?parent=/nonexistent/", **auth_header)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 0
+
     def test_filter_by_status_live(self, api_client, auth_header, page_tree):
         response = api_client.get("/api/write/v1/pages/?status=live", **auth_header)
         assert response.status_code == 200
