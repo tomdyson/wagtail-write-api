@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags %}
+
+{% block content %}
+<article>
+    <header class="mb-10">
+        <h1 class="text-4xl font-bold tracking-tight mb-3">{{ page.title }}</h1>
+        <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
+            <span>{{ page.start_date|date:"F j, Y · g:i A" }}</span>
+            {% if page.end_date %}
+            <span>— {{ page.end_date|date:"F j, Y · g:i A" }}</span>
+            {% endif %}
+            <span>📍 {{ page.location }}</span>
+        </div>
+    </header>
+
+    <div class="prose prose-gray max-w-none">
+        {% for block in page.body %}
+            {% if block.block_type == "text" %}
+                <div class="mb-6 leading-relaxed">{{ block.value|richtext }}</div>
+            {% elif block.block_type == "map_embed" %}
+                <div class="my-8">
+                    <a href="{{ block.value }}" class="text-blue-600 hover:underline" target="_blank" rel="noopener">View map &rarr;</a>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+</article>
+
+<div class="mt-16 pt-8 border-t border-gray-200">
+    <a href="{% pageurl page.get_parent %}" class="text-sm text-gray-500 hover:text-gray-900">&larr; Back to {{ page.get_parent.title }}</a>
+</div>
+{% endblock %}

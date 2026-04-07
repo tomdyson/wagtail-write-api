@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags %}
+
+{% block content %}
+<h1 class="text-4xl font-bold tracking-tight mb-4">{{ page.title }}</h1>
+
+{% if page.intro %}
+<div class="text-lg text-gray-600 mb-10">{{ page.intro|richtext }}</div>
+{% endif %}
+
+<div class="grid gap-8">
+    {% for post in page.get_children.live.specific %}
+    <article class="group">
+        <a href="{% pageurl post %}" class="block">
+            {% if post.feed_image %}
+            {% image post.feed_image fill-800x400 as img %}
+            <img src="{{ img.url }}" alt="{{ img.alt }}" class="w-full h-48 object-cover rounded-lg mb-4">
+            {% endif %}
+            <h2 class="text-xl font-semibold group-hover:text-blue-600 transition-colors">{{ post.title }}</h2>
+            {% if post.published_date %}
+            <time class="text-sm text-gray-500 mt-1 block" datetime="{{ post.published_date|date:'Y-m-d' }}">{{ post.published_date|date:"F j, Y" }}</time>
+            {% endif %}
+            {% if post.authors.first %}
+            <p class="text-sm text-gray-500 mt-1">by {{ post.authors.first.name }}</p>
+            {% endif %}
+        </a>
+    </article>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -41,7 +41,7 @@ class Command(BaseCommand):
         home = root.add_child(title="Home", slug="home")
         Site.objects.update_or_create(
             is_default_site=True,
-            defaults={"hostname": "localhost", "root_page": home},
+            defaults={"hostname": "localhost", "root_page": home, "site_name": "Wagtail Write API Example"},
         )
 
         about = home.add_child(instance=SimplePage(title="About", slug="about", body="<p>About us</p>"))

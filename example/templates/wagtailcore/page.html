@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags %}
+
+{% block content %}
+<h1 class="text-4xl font-bold tracking-tight mb-8">{{ page.title }}</h1>
+
+{% if page.get_children.live %}
+<div class="grid gap-4">
+    {% for child in page.get_children.live %}
+    <a href="{% pageurl child %}" class="block p-4 rounded-lg border border-gray-200 hover:border-gray-400 transition-colors">
+        <span class="font-medium">{{ child.title }}</span>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

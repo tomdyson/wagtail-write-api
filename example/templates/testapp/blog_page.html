@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags %}
+
+{% block content %}
+<article>
+    <header class="mb-10">
+        <h1 class="text-4xl font-bold tracking-tight mb-3">{{ page.title }}</h1>
+        <div class="flex items-center gap-3 text-sm text-gray-500">
+            {% if page.published_date %}
+            <time datetime="{{ page.published_date|date:'Y-m-d' }}">{{ page.published_date|date:"F j, Y" }}</time>
+            {% endif %}
+            {% for author in page.authors.all %}
+            <span>{% if not forloop.first %}· {% endif %}{{ author.name }}</span>
+            {% endfor %}
+        </div>
+    </header>
+
+    {% if page.feed_image %}
+    <figure class="mb-10">
+        {% image page.feed_image width-800 as hero %}
+        <img src="{{ hero.url }}" alt="{{ hero.alt }}" class="w-full rounded-lg">
+    </figure>
+    {% endif %}
+
+    <div class="prose prose-gray max-w-none">
+        {% for block in page.body %}
+            {% if block.block_type == "heading" %}
+                {% if block.value.size == "h2" %}
+                <h2 class="text-2xl font-bold mt-10 mb-4">{{ block.value.text }}</h2>
+                {% elif block.value.size == "h3" %}
+                <h3 class="text-xl font-semibold mt-8 mb-3">{{ block.value.text }}</h3>
+                {% elif block.value.size == "h4" %}
+                <h4 class="text-lg font-semibold mt-6 mb-2">{{ block.value.text }}</h4>
+                {% endif %}
+
+            {% elif block.block_type == "paragraph" %}
+                <div class="mb-6 leading-relaxed">{{ block.value|richtext }}</div>
+
+            {% elif block.block_type == "image" %}
+                <figure class="my-8">
+                    {% image block.value width-800 as img %}
+                    <img src="{{ img.url }}" alt="{{ img.alt }}" class="w-full rounded-lg">
+                </figure>
+
+            {% elif block.block_type == "gallery" %}
+                <div class="my-8 grid grid-cols-2 gap-4">
+                    {% for item in block.value %}
+                    <figure>
+                        {% image item.image fill-400x300 as gimg %}
+                        <img src="{{ gimg.url }}" alt="{{ gimg.alt }}" class="w-full rounded-lg">
+                        {% if item.caption %}
+                        <figcaption class="text-sm text-gray-500 mt-2">{{ item.caption }}</figcaption>
+                        {% endif %}
+                    </figure>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+</article>
+
+<div class="mt-16 pt-8 border-t border-gray-200">
+    <a href="{% pageurl page.get_parent %}" class="text-sm text-gray-500 hover:text-gray-900">&larr; Back to {{ page.get_parent.title }}</a>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% load wagtailcore_tags wagtailimages_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ page.title }}{% endblock %} — {{ page.get_site.site_name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-white text-gray-900 antialiased">
+
+    <nav class="border-b border-gray-200 bg-white">
+        <div class="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between">
+            <a href="/" class="text-lg font-semibold tracking-tight">{{ page.get_site.site_name }}</a>
+            {% with page.get_site.root_page as home %}
+            <div class="flex gap-6 text-sm">
+                {% for child in home.get_children.live %}
+                <a href="{% pageurl child %}" class="text-gray-600 hover:text-gray-900">{{ child.title }}</a>
+                {% endfor %}
+            </div>
+            {% endwith %}
+        </div>
+    </nav>
+
+    <main class="mx-auto max-w-3xl px-6 py-12">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="border-t border-gray-200 mt-16">
+        <div class="mx-auto max-w-3xl px-6 py-8 text-sm text-gray-400">
+            Powered by <a href="https://wagtail.org" class="underline hover:text-gray-600">Wagtail</a>
+            + <a href="https://github.com/smark-1/wagtail-write-api" class="underline hover:text-gray-600">wagtail-write-api</a>
+        </div>
+    </footer>
+
+</body>
+</html>
