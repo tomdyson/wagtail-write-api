@@ -50,6 +50,18 @@ Interactive API docs are served at `/api/write/v1/docs`.
 
 > **Note:** All API URLs require a trailing slash (e.g. `/pages/`, `/pages/3/`). Requests without a trailing slash will receive a `301` redirect.
 
+## Client
+
+**[wagapi](https://github.com/tomdyson/wagapi)** is a CLI client for this API, optimised for LLM orchestration. It translates CLI commands into HTTP calls and returns structured output:
+
+```bash
+pip install wagapi
+wagapi schema                                    # discover content model
+wagapi pages create testapp.BlogPage \
+  --parent /blog/ --title "Hello" --body "..."   # create a page
+wagapi snippets list testapp.Category            # list snippets
+```
+
 ## Requirements
 
 - Python 3.10+

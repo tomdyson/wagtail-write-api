@@ -15,6 +15,8 @@ Wagtail's built-in `wagtail.api.v2` is a **read-only** API designed for headless
 
 If you're building a mobile CMS editor, a CI/CD content pipeline, or a third-party integration that needs to both read and write Wagtail content, this plugin might help.
 
+**[wagapi](https://github.com/tomdyson/wagapi)** is a ready-made CLI client for this API, optimised for LLM orchestration.
+
 ## Features
 
 - **Schema discovery** -- query available page types, snippet types, and their field schemas
