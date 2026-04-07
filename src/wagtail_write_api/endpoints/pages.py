@@ -202,6 +202,9 @@ def create_page(request):
     except (TypeError, ValueError, AttributeError) as exc:
         return 422, {"error": "validation_error", "message": f"Invalid field data: {exc}"}
 
+    # Validate before saving — full_clean() produces field-level errors
+    page.full_clean(exclude=["path", "depth"])
+
     # Add to tree and save revision
     try:
         parent_page.add_child(instance=page)

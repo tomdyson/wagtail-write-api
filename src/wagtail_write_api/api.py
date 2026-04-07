@@ -24,11 +24,14 @@ def on_permission_denied(request, exc):
 def on_validation_error(request, exc):
     if hasattr(exc, "message_dict"):
         details = [
-            {"field": field, "message": msgs[0] if msgs else ""}
+            {"field": field, "message": msgs[0] if len(msgs) == 1 else msgs}
             for field, msgs in exc.message_dict.items()
         ]
     else:
-        details = [{"message": str(exc)}]
+        details = [
+            {"message": m.message % m.params if m.params else m.message}
+            for m in exc.error_list
+        ]
     return api.create_response(
         request,
         {"error": "validation_error", "message": "Validation failed", "details": details},
