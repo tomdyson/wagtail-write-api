@@ -55,11 +55,10 @@ Interactive API docs are served at `/api/write/v1/docs`.
 **[wagapi](https://github.com/tomdyson/wagapi)** is a CLI client for this API, optimised for LLM orchestration. It translates CLI commands into HTTP calls and returns structured output:
 
 ```bash
-pip install wagapi
-wagapi schema                                    # discover content model
-wagapi pages create testapp.BlogPage \
-  --parent /blog/ --title "Hello" --body "..."   # create a page
-wagapi snippets list testapp.Category            # list snippets
+uvx wagapi schema                                    # discover content model
+uvx wagapi pages create testapp.BlogPage \
+  --parent /blog/ --title "Hello" --body "..."       # create a page
+uvx wagapi snippets list testapp.Category            # list snippets
 ```
 
 ## Requirements
