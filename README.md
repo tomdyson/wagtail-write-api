@@ -26,8 +26,6 @@ pip install wagtail-write-api
 # settings.py
 INSTALLED_APPS = [
     ...
-    "rest_framework",
-    "rest_framework.authtoken",
     "wagtail_write_api",
 ]
 ```
@@ -43,7 +41,7 @@ urlpatterns = [
 Create a token and start using the API:
 
 ```bash
-python manage.py drf_create_token admin
+python manage.py create_api_token admin
 curl -H "Authorization: Bearer <token>" http://localhost:8000/api/write/v1/pages/
 ```
 
@@ -55,7 +53,6 @@ Interactive API docs are served at `/api/write/v1/docs`.
 
 - Python 3.10+
 - Wagtail 6.0+
-- Django REST Framework (for token auth)
 
 ## Documentation
 

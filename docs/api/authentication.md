@@ -1,6 +1,6 @@
 # Authentication
 
-The API uses token-based authentication via Django REST Framework's `TokenAuthentication`, wrapped in Django Ninja's `HttpBearer` scheme.
+The API uses token-based authentication via Django Ninja's `HttpBearer` scheme, with tokens stored in wagtail-write-api's own `ApiToken` model.
 
 ## How it works
 
@@ -10,26 +10,28 @@ Every request must include a valid token in the `Authorization` header:
 Authorization: Bearer YOUR_TOKEN_HERE
 ```
 
-The API looks up the token in the `authtoken_token` table (provided by `rest_framework.authtoken`), retrieves the associated user, and sets `request.user` for the duration of the request.
+The API looks up the token, retrieves the associated user, and sets `request.user` for the duration of the request.
 
 ## Creating tokens
 
 ### Via management command
 
 ```bash
-python manage.py drf_create_token username
+python manage.py create_api_token username
 ```
 
-### Via Django admin
+To replace an existing token:
 
-Tokens can be managed in the Django admin at `/django-admin/authtoken/tokenproxy/`.
+```bash
+python manage.py create_api_token username --reset
+```
 
 ### Via Python
 
 ```python
-from rest_framework.authtoken.models import Token
+from wagtail_write_api.models import ApiToken
 
-token, created = Token.objects.get_or_create(user=user)
+token, created = ApiToken.objects.get_or_create(user=user)
 print(token.key)
 ```
 

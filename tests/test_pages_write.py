@@ -3,7 +3,6 @@ import json
 import pytest
 from django.contrib.auth.models import Group, Permission, User
 from django.test import Client
-from rest_framework.authtoken.models import Token
 from wagtail.models import GroupPagePermission, Page
 
 from testapp.models import BlogIndexPage, BlogPage, EventPage, SimplePage

@@ -7,7 +7,7 @@ A complete walkthrough: install the plugin, create a page via the API, publish i
 Follow the [Installation](installation.md) instructions, then create a token:
 
 ```bash
-python manage.py drf_create_token admin
+python manage.py create_api_token admin
 ```
 
 Save the token for the examples below. We'll use `$TOKEN` as a placeholder.

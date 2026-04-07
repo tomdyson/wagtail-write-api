@@ -1,7 +1,7 @@
 import pytest
 from django.contrib.auth.models import User
 from django.test import Client
-from rest_framework.authtoken.models import Token
+from wagtail_write_api.models import ApiToken
 from wagtail.models import Page, Site
 
 
@@ -18,7 +18,7 @@ def admin_user(db):
 
 @pytest.fixture
 def admin_token(admin_user):
-    token, _ = Token.objects.get_or_create(user=admin_user)
+    token, _ = ApiToken.objects.get_or_create(user=admin_user)
     return token.key
 
 

@@ -3,7 +3,7 @@ import uuid
 
 from django.contrib.auth.models import Group, Permission, User
 from django.core.management.base import BaseCommand
-from rest_framework.authtoken.models import Token
+from wagtail_write_api.models import ApiToken
 from wagtail.models import GroupPagePermission, Page, Site
 
 from testapp.models import (
@@ -127,7 +127,7 @@ class Command(BaseCommand):
         # Print tokens
         self.stdout.write("\n--- API Tokens ---")
         for user in [admin, editor, moderator, reviewer]:
-            token, _ = Token.objects.get_or_create(user=user)
+            token, _ = ApiToken.objects.get_or_create(user=user)
             self.stdout.write(f"  {user.username}: {token.key}")
 
         self.stdout.write(f"\nCreated {Page.objects.count()} pages")

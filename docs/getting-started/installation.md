@@ -4,7 +4,6 @@
 
 - Python 3.10 or later
 - Wagtail 6.0 or later
-- Django REST Framework (for token authentication)
 
 ## Install the package
 
@@ -33,28 +32,21 @@ The following packages are installed automatically:
 | Package | Purpose |
 |---------|---------|
 | `django-ninja` | API framework (Pydantic + OpenAPI) |
-| `djangorestframework` | Token authentication |
 | `markdown` | Markdown to HTML conversion |
 | `markdownify` | HTML to Markdown conversion |
 
 ## Configure Django
 
-Add the required apps to `INSTALLED_APPS`:
+Add the app to `INSTALLED_APPS`:
 
 ```python title="settings.py"
 INSTALLED_APPS = [
     # ... your existing apps ...
-
-    # Required for token auth
-    "rest_framework",
-    "rest_framework.authtoken",
-
-    # The write API
     "wagtail_write_api",
 ]
 ```
 
-Run migrations to create the token auth tables:
+Run migrations to create the API token table:
 
 ```bash
 python manage.py migrate
@@ -78,13 +70,13 @@ urlpatterns = [
 Generate a token for a user:
 
 ```bash
-python manage.py drf_create_token admin
+python manage.py create_api_token admin
 ```
 
 This prints a token you can use in the `Authorization` header:
 
 ```
-Generated token: 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b
+Created token: 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b
 ```
 
 ## Verify it works

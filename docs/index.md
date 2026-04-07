@@ -36,8 +36,6 @@ pip install wagtail-write-api
 ```python title="settings.py"
 INSTALLED_APPS = [
     ...
-    "rest_framework",
-    "rest_framework.authtoken",
     "wagtail_write_api",
 ]
 ```

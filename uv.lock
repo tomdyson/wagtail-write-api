@@ -1140,7 +1140,6 @@ version = "0.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "django-ninja" },
-    { name = "djangorestframework" },
     { name = "markdown" },
     { name = "markdownify" },
     { name = "wagtail" },
@@ -1164,7 +1163,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "django-ninja", specifier = ">=1.0" },
-    { name = "djangorestframework" },
     { name = "factory-boy", marker = "extra == 'dev'" },
     { name = "markdown", specifier = ">=3.5" },
     { name = "markdownify", specifier = ">=0.11" },

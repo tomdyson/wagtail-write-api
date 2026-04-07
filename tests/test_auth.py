@@ -1,7 +1,7 @@
 import pytest
 from django.contrib.auth.models import User
 from django.test import Client
-from rest_framework.authtoken.models import Token
+from wagtail_write_api.models import ApiToken
 
 
 @pytest.mark.django_db
@@ -28,7 +28,7 @@ class TestTokenAuth:
         user = User.objects.create_user("inactive", "inactive@example.com", "password")
         user.is_active = False
         user.save()
-        token = Token.objects.create(user=user)
+        token = ApiToken.objects.create(user=user)
         response = api_client.get(
             "/api/write/v1/pages/",
             HTTP_AUTHORIZATION=f"Bearer {token.key}",

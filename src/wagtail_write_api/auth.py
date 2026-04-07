@@ -1,12 +1,13 @@
 from ninja.security import HttpBearer
-from rest_framework.authtoken.models import Token
+
+from wagtail_write_api.models import ApiToken
 
 
 class WagtailTokenAuth(HttpBearer):
     def authenticate(self, request, token: str):
         try:
-            token_obj = Token.objects.select_related("user").get(key=token)
-        except Token.DoesNotExist:
+            token_obj = ApiToken.objects.select_related("user").get(key=token)
+        except ApiToken.DoesNotExist:
             return None
 
         if not token_obj.user.is_active:
