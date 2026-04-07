@@ -2,9 +2,76 @@ import json
 import uuid
 
 import pytest
-from django.test import Client
+from django.contrib.auth.models import User
+from django.test import TestCase
 
 from testapp.models import BlogIndexPage, BlogPage
+from wagtail.models import Page, Site
+from wagtail_write_api.models import ApiToken
+
+
+class TestStreamFieldRead(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_superuser("admin_sf", "sf@test.com", "pw")
+        token, _ = ApiToken.objects.get_or_create(user=cls.admin)
+        cls.auth = {"HTTP_AUTHORIZATION": f"Bearer {token.key}"}
+
+        root = Page.objects.filter(depth=1).first()
+        home = root.add_child(title="Home", slug="home-sf")
+        Site.objects.update_or_create(
+            is_default_site=True,
+            defaults={"hostname": "localhost", "root_page": home},
+        )
+        blog_index = home.add_child(
+            instance=BlogIndexPage(title="Blog", slug="blog", intro="")
+        )
+        blog_index.save_revision().publish()
+
+        cls.blog = blog_index.add_child(
+            instance=BlogPage(
+                title="Stream Post",
+                slug="stream-post",
+                body=json.dumps(
+                    [
+                        {
+                            "type": "heading",
+                            "value": {"text": "Hello World", "size": "h2"},
+                            "id": str(uuid.uuid4()),
+                        },
+                        {
+                            "type": "paragraph",
+                            "value": "<p>Some content here</p>",
+                            "id": str(uuid.uuid4()),
+                        },
+                    ]
+                ),
+            )
+        )
+        cls.blog.save_revision().publish()
+
+    def test_streamfield_returns_list_of_blocks(self):
+        response = self.client.get(f"/api/write/v1/pages/{self.blog.id}/", **self.auth)
+        data = response.json()
+        assert isinstance(data["body"], list)
+        assert len(data["body"]) == 2
+
+    def test_streamfield_block_has_type_value_id(self):
+        response = self.client.get(f"/api/write/v1/pages/{self.blog.id}/", **self.auth)
+        data = response.json()
+        block = data["body"][0]
+        assert "type" in block
+        assert "value" in block
+        assert "id" in block
+        assert block["type"] == "heading"
+
+    def test_struct_block_value_is_dict(self):
+        response = self.client.get(f"/api/write/v1/pages/{self.blog.id}/", **self.auth)
+        data = response.json()
+        heading_block = data["body"][0]
+        assert isinstance(heading_block["value"], dict)
+        assert heading_block["value"]["text"] == "Hello World"
+        assert heading_block["value"]["size"] == "h2"
 
 
 @pytest.fixture
@@ -34,42 +101,6 @@ def blog_with_streamfield(home_page):
     )
     blog.save_revision().publish()
     return blog
-
-
-@pytest.mark.django_db
-class TestStreamFieldRead:
-    def test_streamfield_returns_list_of_blocks(
-        self, api_client, auth_header, blog_with_streamfield
-    ):
-        response = api_client.get(
-            f"/api/write/v1/pages/{blog_with_streamfield.id}/", **auth_header
-        )
-        data = response.json()
-        assert isinstance(data["body"], list)
-        assert len(data["body"]) == 2
-
-    def test_streamfield_block_has_type_value_id(
-        self, api_client, auth_header, blog_with_streamfield
-    ):
-        response = api_client.get(
-            f"/api/write/v1/pages/{blog_with_streamfield.id}/", **auth_header
-        )
-        data = response.json()
-        block = data["body"][0]
-        assert "type" in block
-        assert "value" in block
-        assert "id" in block
-        assert block["type"] == "heading"
-
-    def test_struct_block_value_is_dict(self, api_client, auth_header, blog_with_streamfield):
-        response = api_client.get(
-            f"/api/write/v1/pages/{blog_with_streamfield.id}/", **auth_header
-        )
-        data = response.json()
-        heading_block = data["body"][0]
-        assert isinstance(heading_block["value"], dict)
-        assert heading_block["value"]["text"] == "Hello World"
-        assert heading_block["value"]["size"] == "h2"
 
 
 @pytest.mark.django_db

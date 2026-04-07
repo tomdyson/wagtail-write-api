@@ -2,10 +2,11 @@ import json
 
 import pytest
 from django.contrib.auth.models import Group, Permission, User
-from django.test import Client
-from wagtail.models import GroupPagePermission, Page
+from django.test import Client, TestCase
+from wagtail.models import GroupPagePermission, Page, Site
 
 from testapp.models import BlogIndexPage, BlogPage, EventPage, SimplePage
+from wagtail_write_api.models import ApiToken
 
 
 @pytest.fixture
@@ -17,71 +18,90 @@ def blog_tree(home_page):
     return {"home": home_page, "blog_index": blog_index}
 
 
-@pytest.mark.django_db
-class TestCreatePage:
-    def test_create_simple_page(self, api_client, auth_header, home_page):
-        response = api_client.post(
+class TestCreatePage(TestCase):
+    """Page creation tests — each test POSTs a new page which is rolled back
+    by Django's TestCase savepoint, so the shared setUpTestData tree stays clean."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_superuser("admin_cw", "cw@test.com", "pw")
+        token, _ = ApiToken.objects.get_or_create(user=cls.admin)
+        cls.auth = {"HTTP_AUTHORIZATION": f"Bearer {token.key}"}
+
+        root = Page.objects.filter(depth=1).first()
+        cls.home = root.add_child(title="Home", slug="home-cw")
+        Site.objects.update_or_create(
+            is_default_site=True,
+            defaults={"hostname": "localhost", "root_page": cls.home},
+        )
+        cls.blog_index = cls.home.add_child(
+            instance=BlogIndexPage(title="Blog", slug="blog", intro="Blog intro")
+        )
+        cls.blog_index.save_revision().publish()
+
+    def test_create_simple_page(self):
+        response = self.client.post(
             "/api/write/v1/pages/",
             data=json.dumps(
-                {"type": "testapp.SimplePage", "parent": home_page.id, "title": "New Page"}
+                {"type": "testapp.SimplePage", "parent": self.home.id, "title": "New Page"}
             ),
             content_type="application/json",
-            **auth_header,
+            **self.auth,
         )
         assert response.status_code == 201
         data = response.json()
         assert data["title"] == "New Page"
         assert data["id"] is not None
 
-    def test_create_auto_generates_slug(self, api_client, auth_header, home_page):
-        response = api_client.post(
+    def test_create_auto_generates_slug(self):
+        response = self.client.post(
             "/api/write/v1/pages/",
             data=json.dumps(
-                {"type": "testapp.SimplePage", "parent": home_page.id, "title": "My New Page"}
+                {"type": "testapp.SimplePage", "parent": self.home.id, "title": "My New Page"}
             ),
             content_type="application/json",
-            **auth_header,
+            **self.auth,
         )
         assert response.status_code == 201
         data = response.json()
         assert data["slug"] == "my-new-page"
 
-    def test_create_as_draft_by_default(self, api_client, auth_header, home_page):
-        response = api_client.post(
+    def test_create_as_draft_by_default(self):
+        response = self.client.post(
             "/api/write/v1/pages/",
             data=json.dumps(
-                {"type": "testapp.SimplePage", "parent": home_page.id, "title": "Draft"}
+                {"type": "testapp.SimplePage", "parent": self.home.id, "title": "Draft"}
             ),
             content_type="application/json",
-            **auth_header,
+            **self.auth,
         )
         data = response.json()
         assert data["meta"]["live"] is False
 
-    def test_create_with_publish_action(self, api_client, auth_header, home_page):
-        response = api_client.post(
+    def test_create_with_publish_action(self):
+        response = self.client.post(
             "/api/write/v1/pages/",
             data=json.dumps(
                 {
                     "type": "testapp.SimplePage",
-                    "parent": home_page.id,
+                    "parent": self.home.id,
                     "title": "Published",
                     "action": "publish",
                 }
             ),
             content_type="application/json",
-            **auth_header,
+            **self.auth,
         )
         data = response.json()
         assert data["meta"]["live"] is True
 
-    def test_create_blog_page_with_authors(self, api_client, auth_header, blog_tree):
-        response = api_client.post(
+    def test_create_blog_page_with_authors(self):
+        response = self.client.post(
             "/api/write/v1/pages/",
             data=json.dumps(
                 {
                     "type": "testapp.BlogPage",
-                    "parent": blog_tree["blog_index"].id,
+                    "parent": self.blog_index.id,
                     "title": "Post with Authors",
                     "authors": [
                         {"name": "Alice", "role": "Writer"},
@@ -90,29 +110,31 @@ class TestCreatePage:
                 }
             ),
             content_type="application/json",
-            **auth_header,
+            **self.auth,
         )
         assert response.status_code == 201
         data = response.json()
         assert len(data["authors"]) == 2
         assert data["authors"][0]["name"] == "Alice"
 
-    def test_create_with_parent_path(self, api_client, auth_header, home_page):
+    def test_create_with_parent_path(self):
         """Accept a URL path string for the parent field."""
-        response = api_client.post(
+        response = self.client.post(
             "/api/write/v1/pages/",
-            data=json.dumps({"type": "testapp.SimplePage", "parent": "/", "title": "Path Parent"}),
+            data=json.dumps(
+                {"type": "testapp.SimplePage", "parent": "/", "title": "Path Parent"}
+            ),
             content_type="application/json",
-            **auth_header,
+            **self.auth,
         )
         assert response.status_code == 201
         data = response.json()
         assert data["title"] == "Path Parent"
-        assert data["meta"]["parent_id"] == home_page.id
+        assert data["meta"]["parent_id"] == self.home.id
 
-    def test_create_with_nested_parent_path(self, api_client, auth_header, blog_tree):
+    def test_create_with_nested_parent_path(self):
         """Accept a nested path like /blog/ for the parent field."""
-        response = api_client.post(
+        response = self.client.post(
             "/api/write/v1/pages/",
             data=json.dumps(
                 {
@@ -122,15 +144,15 @@ class TestCreatePage:
                 }
             ),
             content_type="application/json",
-            **auth_header,
+            **self.auth,
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["meta"]["parent_id"] == blog_tree["blog_index"].id
+        assert data["meta"]["parent_id"] == self.blog_index.id
 
-    def test_create_with_invalid_parent_path_returns_422(self, api_client, auth_header, home_page):
+    def test_create_with_invalid_parent_path_returns_422(self):
         """A path that doesn't resolve returns 422."""
-        response = api_client.post(
+        response = self.client.post(
             "/api/write/v1/pages/",
             data=json.dumps(
                 {
@@ -140,62 +162,60 @@ class TestCreatePage:
                 }
             ),
             content_type="application/json",
-            **auth_header,
+            **self.auth,
         )
         assert response.status_code == 422
         data = response.json()
         assert "No page found at path" in data["message"]
 
-    def test_create_without_auth_returns_401(self, api_client, home_page):
-        response = api_client.post(
+    def test_create_without_auth_returns_401(self):
+        response = self.client.post(
             "/api/write/v1/pages/",
             data=json.dumps(
-                {"type": "testapp.SimplePage", "parent": home_page.id, "title": "No Auth"}
+                {"type": "testapp.SimplePage", "parent": self.home.id, "title": "No Auth"}
             ),
             content_type="application/json",
         )
         assert response.status_code == 401
 
-    def test_create_invalid_type_under_parent_returns_422(
-        self, api_client, auth_header, home_page
-    ):
+    def test_create_invalid_type_under_parent_returns_422(self):
         """BlogPage can only go under BlogIndexPage, not directly under home."""
-        response = api_client.post(
+        response = self.client.post(
             "/api/write/v1/pages/",
             data=json.dumps(
-                {"type": "testapp.BlogPage", "parent": home_page.id, "title": "Wrong Parent"}
+                {"type": "testapp.BlogPage", "parent": self.home.id, "title": "Wrong Parent"}
             ),
             content_type="application/json",
-            **auth_header,
+            **self.auth,
         )
         assert response.status_code == 422
 
-    def test_create_invalid_streamfield_data_returns_422(self, api_client, auth_header, blog_tree):
+    def test_create_invalid_streamfield_data_returns_422(self):
         """Passing a dict instead of a list for a StreamField returns 422, not 500."""
-        response = api_client.post(
+        response = self.client.post(
             "/api/write/v1/pages/",
             data=json.dumps(
                 {
                     "type": "testapp.BlogPage",
-                    "parent": blog_tree["blog_index"].id,
+                    "parent": self.blog_index.id,
                     "title": "Bad StreamField",
                     "body": {"format": "markdown", "content": "This is wrong"},
                 }
             ),
             content_type="application/json",
-            **auth_header,
+            **self.auth,
         )
         assert response.status_code == 422
         data = response.json()
         assert data["error"] == "validation_error"
 
-    def test_create_malformed_json_returns_422(self, api_client, auth_header):
+    def test_create_malformed_json_returns_422(self):
         """Malformed JSON in request body returns 422, not 500."""
-        response = api_client.post(
+        response = self.client.post(
             "/api/write/v1/pages/",
             data="not valid json{",
             content_type="application/json",
-            **auth_header,
+            **self.auth,
         )
         assert response.status_code == 422
         data = response.json()

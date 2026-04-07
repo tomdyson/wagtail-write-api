@@ -169,6 +169,22 @@ class TestSchemaDiscoveryEndpoint:
         data = response.json()
         assert data["streamfield_blocks"] == {}
 
+    def test_richtext_fields_for_simple_page(self, api_client, auth_header):
+        response = api_client.get(
+            "/api/write/v1/schema/testapp.SimplePage/", **auth_header
+        )
+        data = response.json()
+        assert "richtext_fields" in data
+        assert "body" in data["richtext_fields"]
+
+    def test_richtext_fields_empty_for_streamfield_page(self, api_client, auth_header):
+        response = api_client.get(
+            "/api/write/v1/schema/testapp.BlogPage/", **auth_header
+        )
+        data = response.json()
+        assert "richtext_fields" in data
+        assert "body" not in data["richtext_fields"]
+
     def test_event_page_streamfield_blocks(self, api_client, auth_header):
         response = api_client.get(
             "/api/write/v1/schema/testapp.EventPage/", **auth_header

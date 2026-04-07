@@ -103,6 +103,7 @@ def list_pages(
                     "live": page.live,
                     "has_unpublished_changes": page.has_unpublished_changes,
                     "parent_id": page.get_parent().id if page.get_parent() else None,
+                    "url_path": _get_url_path(page),
                 },
             }
         )
@@ -459,6 +460,21 @@ def _resolve_page_by_path(path: str):
         return None
 
 
+def _get_url_path(page):
+    """Return the site-relative URL path for a page (e.g. '/blog/my-post/')."""
+    from wagtail.models import Site
+
+    site = Site.objects.filter(is_default_site=True).first()
+    if not site or not page.url_path:
+        return None
+
+    root_path = site.root_page.url_path.rstrip("/")
+    url_path = page.url_path
+    if url_path.startswith(root_path):
+        url_path = url_path[len(root_path):]
+    return url_path or "/"
+
+
 def _apply_fields(page, body, model_class):
     """Apply request body fields to a page instance."""
     from modelcluster.fields import ParentalKey
@@ -541,6 +557,7 @@ def _serialize_page(source, page, type_str, user):
         "last_published_at": (
             page.last_published_at.isoformat() if page.last_published_at else None
         ),
+        "url_path": _get_url_path(page),
         "parent_id": parent.id if parent else None,
         "parent_type": (
             f"{parent_specific._meta.app_label}.{parent_specific.__class__.__name__}"

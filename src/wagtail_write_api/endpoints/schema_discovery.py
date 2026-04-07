@@ -50,6 +50,7 @@ def get_page_type_schema(request, type_str: str):
 
     model_class = _resolve_model(type_str)
     streamfield_meta = _get_streamfield_meta(model_class) if model_class else {}
+    richtext_fields = _get_richtext_fields(model_class) if model_class else []
 
     return {
         "type": type_str,
@@ -57,6 +58,7 @@ def get_page_type_schema(request, type_str: str):
         "patch_schema": patch_schema.model_json_schema(),
         "read_schema": read_schema.model_json_schema(),
         "streamfield_blocks": streamfield_meta,
+        "richtext_fields": richtext_fields,
     }
 
 
@@ -68,6 +70,17 @@ def _resolve_model(type_str):
         return apps.get_model(app_label, model_name)
     except (ValueError, LookupError):
         return None
+
+
+def _get_richtext_fields(model_class):
+    """Return a list of field names that are RichTextFields."""
+    from wagtail.fields import RichTextField
+
+    return [
+        field.name
+        for field in model_class._meta.get_fields()
+        if isinstance(field, RichTextField)
+    ]
 
 
 def _get_streamfield_meta(model_class):

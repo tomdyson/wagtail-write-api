@@ -1,10 +1,13 @@
+import io
 import json
 import uuid
 
 from django.contrib.auth.models import Group, Permission, User
+from django.core.files.images import ImageFile
 from django.core.management.base import BaseCommand
-from wagtail_write_api.models import ApiToken
+from wagtail.images.models import Image
 from wagtail.models import GroupPagePermission, Page, Site
+from wagtail_write_api.models import ApiToken
 
 from testapp.models import (
     BlogIndexPage,
@@ -124,6 +127,19 @@ class Command(BaseCommand):
             )
         moderator.groups.add(mods_group)
 
+        # Images
+        Image.objects.all().delete()
+        image_titles = ["Hero background", "Blog header", "Team photo"]
+        for i, title in enumerate(image_titles, 1):
+            img = self._create_placeholder_image(100 * i, 80 * i)
+            Image.objects.create(
+                title=title,
+                file=ImageFile(img, name=f"demo-{i}.png"),
+                uploaded_by_user=admin,
+            )
+
+        self.stdout.write(f"Created {len(image_titles)} images")
+
         # Print tokens
         self.stdout.write("\n--- API Tokens ---")
         for user in [admin, editor, moderator, reviewer]:
@@ -132,6 +148,17 @@ class Command(BaseCommand):
 
         self.stdout.write(f"\nCreated {Page.objects.count()} pages")
         self.stdout.write(self.style.SUCCESS("Done!"))
+
+    @staticmethod
+    def _create_placeholder_image(width, height):
+        """Create a minimal solid-colour PNG in memory."""
+        from PIL import Image as PILImage
+
+        img = PILImage.new("RGB", (width, height), color=(200, 200, 200))
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        return buf
 
     def _create_user(self, username, is_superuser=False):
         user, created = User.objects.get_or_create(
