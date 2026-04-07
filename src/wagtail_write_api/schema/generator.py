@@ -5,9 +5,13 @@ from pydantic import create_model
 from wagtail_write_api.schema.fields import SKIP_FIELDS, map_django_field
 
 
-def generate_schemas_for_model(model_class):
+def generate_schemas_for_model(model_class, model_kind="page"):
     """
-    Introspect a Wagtail Page subclass and produce ReadSchema, CreateSchema, PatchSchema.
+    Introspect a Wagtail model and produce ReadSchema, CreateSchema, PatchSchema.
+
+    model_kind controls which extra fields are added:
+      "page"    — type, parent (required), action (optional)
+      "snippet" — type only
     """
     model_name = model_class.__name__
     exclude = set(getattr(model_class, "write_api_exclude", []))
@@ -56,11 +60,12 @@ def generate_schemas_for_model(model_class):
     read_fields["id"] = (int, ...)
     ReadSchema = create_model(f"{model_name}Read", **read_fields)
 
-    # CreateSchema: type + parent required, no id, slug optional
+    # CreateSchema: type required; parent+action only for pages
     create_fields = {}
     create_fields["type"] = (str, ...)
-    create_fields["parent"] = (Union[int, str], ...)
-    create_fields["action"] = (Optional[str], None)
+    if model_kind == "page":
+        create_fields["parent"] = (Union[int, str], ...)
+        create_fields["action"] = (Optional[str], None)
     for name, (python_type, default) in write_fields.items():
         if name == "slug":
             create_fields[name] = (Optional[str], None)
@@ -70,7 +75,8 @@ def generate_schemas_for_model(model_class):
 
     # PatchSchema: all fields optional
     patch_fields = {}
-    patch_fields["action"] = (Optional[str], None)
+    if model_kind == "page":
+        patch_fields["action"] = (Optional[str], None)
     for name, (python_type, _) in write_fields.items():
         # Make everything Optional with None default
         if hasattr(python_type, "__origin__"):

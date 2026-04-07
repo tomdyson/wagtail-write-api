@@ -6,6 +6,8 @@ from wagtail.fields import RichTextField, StreamField
 from wagtail.images.blocks import ImageChooserBlock
 from wagtail.blocks import PageChooserBlock
 from wagtail.models import Orderable, Page
+from wagtail.snippets.blocks import SnippetChooserBlock
+from wagtail.snippets.models import register_snippet
 
 
 class SimplePage(Page):
@@ -30,6 +32,13 @@ class BlogPage(Page):
     published_date = models.DateField(null=True, blank=True)
     feed_image = models.ForeignKey(
         "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    category = models.ForeignKey(
+        "testapp.Category",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
@@ -63,6 +72,7 @@ class BlogPage(Page):
                 ),
             ),
             ("related_pages", ListBlock(PageChooserBlock())),
+            ("category_highlight", SnippetChooserBlock("testapp.Category")),
         ],
         use_json_field=True,
     )
@@ -70,6 +80,7 @@ class BlogPage(Page):
     content_panels = Page.content_panels + [
         FieldPanel("published_date"),
         FieldPanel("feed_image"),
+        FieldPanel("category"),
         FieldPanel("body"),
         InlinePanel("authors", label="Authors"),
     ]
@@ -110,3 +121,32 @@ class EventPage(Page):
     ]
 
     write_api_exclude = ["legacy_id"]
+
+
+@register_snippet
+class Category(models.Model):
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True)
+
+    panels = [
+        FieldPanel("name"),
+        FieldPanel("slug"),
+    ]
+
+    class Meta:
+        verbose_name_plural = "categories"
+
+    def __str__(self):
+        return self.name
+
+
+@register_snippet
+class Tag(models.Model):
+    name = models.CharField(max_length=255)
+
+    panels = [
+        FieldPanel("name"),
+    ]
+
+    def __str__(self):
+        return self.name

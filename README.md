@@ -8,8 +8,9 @@ Wagtail's [built-in API](https://docs.wagtail.org/en/stable/advanced_topics/api/
 
 ## Features
 
-- **Schema discovery** so clients can inspect page types and their fields
+- **Schema discovery** so clients can inspect page types, snippet types, and their fields
 - **Page CRUD** with draft/publish workflow, revision history, copy, and move
+- **Snippet CRUD** for models registered with `@register_snippet` (categories, tags, reusable content)
 - **Image management** with multipart upload and configurable renditions
 - **StreamField** read/write with round-trip fidelity
 - **Rich text** input in Markdown, HTML, or Wagtail's internal format
@@ -97,7 +98,6 @@ The [publish workflow](.github/workflows/publish.yml) builds and uploads to PyPI
 
 The following Wagtail features are not yet covered by the API:
 
-- **Snippets** — models registered with `@register_snippet` (categories, tags, reusable content blocks). Pages referencing snippets via `SnippetChooserBlock` or `SnippetChooserPanel` cannot set those fields through the API.
 - **Documents** — `DocumentChooserBlock` and document uploads. Only images have API support currently.
 - **Multi-site** — the API assumes a single default site. Path resolution and `url_path` may behave unexpectedly with multiple `Site` objects.
 - **Locales / translations** — no support for `wagtail-localize` or Wagtail's built-in locale features. Pages are created in the default locale only.

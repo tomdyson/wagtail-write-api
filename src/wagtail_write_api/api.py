@@ -55,7 +55,9 @@ def on_unhandled_error(request, exc):
 from wagtail_write_api.endpoints.images import router as images_router
 from wagtail_write_api.endpoints.pages import router as pages_router
 from wagtail_write_api.endpoints.schema_discovery import router as schema_router
+from wagtail_write_api.endpoints.snippets import router as snippets_router
 
 api.add_router("/pages/", pages_router)
 api.add_router("/images/", images_router)
+api.add_router("/snippets/", snippets_router)
 api.add_router("/schema/", schema_router)

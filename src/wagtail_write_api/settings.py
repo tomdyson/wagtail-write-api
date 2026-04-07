@@ -3,6 +3,7 @@ from django.conf import settings
 DEFAULTS = {
     "RICH_TEXT_OUTPUT_FORMAT": "html",
     "EXCLUDE_PAGE_TYPES": [],
+    "EXCLUDE_SNIPPET_TYPES": [],
     "DOCS_URL": "/docs",
     "REQUIRE_AUTH_FOR_READ": True,
     "DEFAULT_PAGE_SIZE": 20,

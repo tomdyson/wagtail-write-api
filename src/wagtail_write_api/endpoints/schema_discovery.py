@@ -41,6 +41,53 @@ def list_page_types(request):
     return {"page_types": types}
 
 
+@router.get("/snippets/")
+def list_snippet_types(request):
+    from wagtail_write_api.schema.registry import snippet_schema_registry
+
+    types = []
+    for type_str in snippet_schema_registry.all_snippet_types():
+        model_class = _resolve_model(type_str)
+        if not model_class:
+            continue
+
+        read_schema, _, _ = snippet_schema_registry.get_schemas(type_str)
+        fields_summary = list(read_schema.model_fields.keys())
+
+        types.append({
+            "type": type_str,
+            "verbose_name": model_class._meta.verbose_name,
+            "fields_summary": fields_summary,
+        })
+
+    return {"snippet_types": types}
+
+
+@router.get("/snippets/{type_str}/")
+def get_snippet_type_schema(request, type_str: str):
+    from wagtail_write_api.schema.registry import snippet_schema_registry
+
+    try:
+        read_schema, create_schema, patch_schema = snippet_schema_registry.get_schemas(type_str)
+    except KeyError:
+        from django.http import Http404
+
+        raise Http404(f"Unknown snippet type: {type_str}")
+
+    model_class = _resolve_model(type_str)
+    streamfield_meta = _get_streamfield_meta(model_class) if model_class else {}
+    richtext_fields = _get_richtext_fields(model_class) if model_class else []
+
+    return {
+        "type": type_str,
+        "create_schema": create_schema.model_json_schema(),
+        "patch_schema": patch_schema.model_json_schema(),
+        "read_schema": read_schema.model_json_schema(),
+        "streamfield_blocks": streamfield_meta,
+        "richtext_fields": richtext_fields,
+    }
+
+
 @router.get("/{type_str}/")
 def get_page_type_schema(request, type_str: str):
     from wagtail_write_api.schema.registry import schema_registry

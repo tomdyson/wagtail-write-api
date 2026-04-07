@@ -13,8 +13,10 @@ from testapp.models import (
     BlogIndexPage,
     BlogPage,
     BlogPageAuthor,
+    Category,
     EventPage,
     SimplePage,
+    Tag,
 )
 
 
@@ -126,6 +128,15 @@ class Command(BaseCommand):
                 group=mods_group, page=home, permission=perm
             )
         moderator.groups.add(mods_group)
+
+        # Snippets
+        Category.objects.all().delete()
+        Tag.objects.all().delete()
+        for name, slug in [("Technology", "technology"), ("Science", "science"), ("Culture", "culture")]:
+            Category.objects.create(name=name, slug=slug)
+        for name in ["python", "django", "wagtail", "api", "tutorial"]:
+            Tag.objects.create(name=name)
+        self.stdout.write(f"Created {Category.objects.count()} categories, {Tag.objects.count()} tags")
 
         # Images
         Image.objects.all().delete()
