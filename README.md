@@ -1,6 +1,6 @@
 # wagtail-write-api
 
-A read/write REST API for [Wagtail](https://wagtail.org/) CMS, built on [Django Ninja](https://django-ninja.dev/).
+A read/write REST API for [Wagtail](https://wagtail.org/) CMS.
 
 Wagtail's [built-in API](https://docs.wagtail.org/en/stable/advanced_topics/api/) is read-only, designed for headless frontends. This plugin adds full content management: create, edit, publish, and delete pages and images via a REST API with automatic OpenAPI documentation.
 
