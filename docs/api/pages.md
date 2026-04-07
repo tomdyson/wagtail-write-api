@@ -34,8 +34,8 @@ GET /pages/
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `type` | string | Filter by page type, e.g. `blog.BlogPage` |
-| `parent` | int | Direct children of this page ID |
-| `descendant_of` | int | All descendants of this page ID |
+| `parent` | int or string | Direct children of this page ID or URL path (e.g. `5` or `/blog/`) |
+| `descendant_of` | int or string | All descendants of this page ID or URL path |
 | `status` | string | `draft`, `live`, or `live+draft` |
 | `slug` | string | Exact slug match (may return multiple if slug exists under different parents) |
 | `path` | string | Exact URL path match, e.g. `/blog/my-post/` (always 0 or 1 result) |

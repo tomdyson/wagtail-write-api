@@ -87,6 +87,54 @@ class TestRichTextInput:
         page = SimplePage.objects.get(title="Plain String")
         assert page.body == "<p>Just plain HTML</p>"
 
+    def test_streamfield_blocks_coerced_to_html(self, api_client, auth_header, home_page):
+        """StreamField-style blocks sent to a RichTextField are coerced to HTML."""
+        response = api_client.post(
+            "/api/write/v1/pages/",
+            data=json.dumps(
+                {
+                    "type": "testapp.SimplePage",
+                    "parent": home_page.id,
+                    "title": "Blocks Coerced",
+                    "body": [
+                        {"type": "paragraph", "value": "<p>Hello</p>", "id": "a"},
+                        {"type": "paragraph", "value": "<p>World</p>", "id": "b"},
+                    ],
+                }
+            ),
+            content_type="application/json",
+            **auth_header,
+        )
+        assert response.status_code == 201
+        page = SimplePage.objects.get(title="Blocks Coerced")
+        assert isinstance(page.body, str)
+        assert "<p>Hello</p>" in page.body
+        assert "<p>World</p>" in page.body
+        assert "[{" not in page.body  # not stringified Python
+
+    def test_streamfield_heading_blocks_coerced(self, api_client, auth_header, home_page):
+        """Heading blocks are converted to HTML heading tags."""
+        response = api_client.post(
+            "/api/write/v1/pages/",
+            data=json.dumps(
+                {
+                    "type": "testapp.SimplePage",
+                    "parent": home_page.id,
+                    "title": "Heading Coerced",
+                    "body": [
+                        {"type": "heading", "value": {"text": "Title", "size": "h2"}, "id": "a"},
+                        {"type": "paragraph", "value": "<p>Body text</p>", "id": "b"},
+                    ],
+                }
+            ),
+            content_type="application/json",
+            **auth_header,
+        )
+        assert response.status_code == 201
+        page = SimplePage.objects.get(title="Heading Coerced")
+        assert "<h2>Title</h2>" in page.body
+        assert "<p>Body text</p>" in page.body
+
     def test_markdown_wagtail_page_link(self, api_client, auth_header, home_page):
         response = api_client.post(
             "/api/write/v1/pages/",

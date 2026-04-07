@@ -92,6 +92,12 @@ WAGTAIL_WRITE_API = {
 !!! tip "For CMS editors"
     If your client needs to read content, edit it, and write it back, use `"wagtail"` format. This preserves the internal link references (page IDs) through the round trip. With `"html"` format, internal links are expanded to URL paths, which can't be losslessly converted back.
 
+## StreamField blocks sent to a RichTextField
+
+If a client accidentally sends StreamField-style blocks (a list of `{"type": ..., "value": ...}` dicts) to a `RichTextField`, the API extracts the HTML content from the blocks rather than storing a stringified list. Paragraph and text block values are concatenated, and heading blocks are converted to HTML heading tags.
+
+This is a convenience fallback — for best results, send one of the documented input formats above.
+
 ## Rich text in StreamField
 
 `RichTextBlock` values in StreamField accept the same input format:
