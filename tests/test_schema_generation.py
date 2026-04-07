@@ -231,13 +231,12 @@ class TestAvailableParents(TestCase):
         )
         cls.blog_index.save_revision().publish()
 
-    def test_schema_list_includes_available_parents(self):
+    def test_constrained_type_has_available_parents(self):
         response = self.client.get("/api/write/v1/schema/", **self.auth)
         assert response.status_code == 200
         data = response.json()
-        page_types = data["page_types"]
-        for pt in page_types:
-            assert "available_parents" in pt
+        blog_type = next(pt for pt in data["page_types"] if pt["type"] == "testapp.BlogPage")
+        assert "available_parents" in blog_type
 
     def test_blog_page_available_parents_includes_blog_index(self):
         response = self.client.get("/api/write/v1/schema/", **self.auth)
@@ -255,13 +254,14 @@ class TestAvailableParents(TestCase):
         assert parent["type"] == "testapp.BlogIndexPage"
         assert parent["url_path"] == "/blog/"
 
-    def test_unconstrained_type_has_empty_available_parents(self):
+    def test_unconstrained_type_omits_available_parents(self):
         """Page types that allow wagtailcore.Page as parent are unconstrained —
-        available_parents should be empty to avoid listing every page."""
+        available_parents should be omitted entirely (not an empty list, which
+        would look like 'no valid parents exist')."""
         response = self.client.get("/api/write/v1/schema/", **self.auth)
         data = response.json()
         simple_type = next(pt for pt in data["page_types"] if pt["type"] == "testapp.SimplePage")
-        assert simple_type["available_parents"] == []
+        assert "available_parents" not in simple_type
 
 
 class TestHintsInPageResponse(TestCase):

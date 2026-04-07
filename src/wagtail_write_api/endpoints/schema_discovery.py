@@ -24,18 +24,19 @@ def list_page_types(request):
         read_schema, _, _ = schema_registry.get_schemas(type_str)
         fields_summary = list(read_schema.model_fields.keys())
 
-        available_parents = _get_available_parents(model_class)
+        entry = {
+            "type": type_str,
+            "verbose_name": model_class._meta.verbose_name,
+            "allowed_parent_types": allowed_parents,
+            "allowed_subpage_types": allowed_children,
+            "fields_summary": fields_summary,
+        }
 
-        types.append(
-            {
-                "type": type_str,
-                "verbose_name": model_class._meta.verbose_name,
-                "allowed_parent_types": allowed_parents,
-                "allowed_subpage_types": allowed_children,
-                "fields_summary": fields_summary,
-                "available_parents": available_parents,
-            }
-        )
+        available_parents = _get_available_parents(model_class)
+        if available_parents is not None:
+            entry["available_parents"] = available_parents
+
+        types.append(entry)
 
     return {"page_types": types}
 
@@ -79,7 +80,7 @@ def _get_available_parents(model_class):
 
     parent_models = model_class.allowed_parent_page_models()
     if Page in parent_models:
-        return []
+        return None
 
     result = []
     for parent_model in parent_models:

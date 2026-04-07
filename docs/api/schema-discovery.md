@@ -37,10 +37,7 @@ GET /schema/
       "verbose_name": "blog index page",
       "allowed_parent_types": ["wagtailcore.Page", "home.HomePage"],
       "allowed_subpage_types": ["blog.BlogPage"],
-      "fields_summary": ["id", "title", "slug", "intro"],
-      "available_parents": [
-        {"id": 1, "title": "Root", "type": "wagtailcore.Page", "url_path": "/"}
-      ]
+      "fields_summary": ["id", "title", "slug", "intro"]
     }
   ]
 }
@@ -48,7 +45,7 @@ GET /schema/
 
 The `allowed_parent_types` and `allowed_subpage_types` reflect the page model's `parent_page_types` and `subpage_types` attributes (both directions of the constraint are checked). The `available_parents` field lists actual page instances (up to 10 per parent type) that can serve as parents, including their `id`, `title`, `type`, and `url_path`. This allows clients to skip a separate `pages list` call when creating pages — the parent ID is already available in the schema response.
 
-`available_parents` is only populated when the page type has a real constraint (i.e. `wagtailcore.Page` is not among its allowed parents). Unconstrained types return an empty list — almost every page qualifies, so listing instances would be noise rather than signal.
+`available_parents` is only present when the page type has a real constraint (i.e. `wagtailcore.Page` is not among its allowed parents). For unconstrained types the field is omitted entirely — almost every page qualifies, so listing instances would be noise rather than signal. If you need to find a parent for an unconstrained type, use the `GET /pages/` endpoint with a `type` filter.
 
 ---
 
