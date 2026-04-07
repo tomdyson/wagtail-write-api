@@ -5,7 +5,7 @@ from wagtail_write_api.auth import WagtailTokenAuth
 router = Router(tags=["schema"], auth=WagtailTokenAuth())
 
 
-@router.get("/page-types/")
+@router.get("/")
 def list_page_types(request):
     from wagtail_write_api.schema.registry import schema_registry
 
@@ -37,7 +37,7 @@ def list_page_types(request):
     return {"page_types": types}
 
 
-@router.get("/page-types/{type_str}/")
+@router.get("/{type_str}/")
 def get_page_type_schema(request, type_str: str):
     from wagtail_write_api.schema.registry import schema_registry
 

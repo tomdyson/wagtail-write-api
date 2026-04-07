@@ -99,7 +99,7 @@ class TestSchemaGeneration:
 class TestSchemaDiscoveryEndpoint:
     def test_streamfield_blocks_in_schema(self, api_client, auth_header):
         response = api_client.get(
-            "/api/write/v1/schema/page-types/testapp.BlogPage/", **auth_header
+            "/api/write/v1/schema/testapp.BlogPage/", **auth_header
         )
         assert response.status_code == 200
         data = response.json()
@@ -115,7 +115,7 @@ class TestSchemaDiscoveryEndpoint:
 
     def test_structblock_has_properties(self, api_client, auth_header):
         response = api_client.get(
-            "/api/write/v1/schema/page-types/testapp.BlogPage/", **auth_header
+            "/api/write/v1/schema/testapp.BlogPage/", **auth_header
         )
         data = response.json()
         heading_block = next(
@@ -132,7 +132,7 @@ class TestSchemaDiscoveryEndpoint:
 
     def test_listblock_has_items(self, api_client, auth_header):
         response = api_client.get(
-            "/api/write/v1/schema/page-types/testapp.BlogPage/", **auth_header
+            "/api/write/v1/schema/testapp.BlogPage/", **auth_header
         )
         data = response.json()
         gallery_block = next(
@@ -146,7 +146,7 @@ class TestSchemaDiscoveryEndpoint:
 
     def test_richtext_block_type(self, api_client, auth_header):
         response = api_client.get(
-            "/api/write/v1/schema/page-types/testapp.BlogPage/", **auth_header
+            "/api/write/v1/schema/testapp.BlogPage/", **auth_header
         )
         data = response.json()
         para_block = next(
@@ -156,7 +156,7 @@ class TestSchemaDiscoveryEndpoint:
 
     def test_image_chooser_block_type(self, api_client, auth_header):
         response = api_client.get(
-            "/api/write/v1/schema/page-types/testapp.BlogPage/", **auth_header
+            "/api/write/v1/schema/testapp.BlogPage/", **auth_header
         )
         data = response.json()
         img_block = next(bt for bt in data["streamfield_blocks"]["body"] if bt["type"] == "image")
@@ -164,14 +164,14 @@ class TestSchemaDiscoveryEndpoint:
 
     def test_no_streamfields_returns_empty(self, api_client, auth_header):
         response = api_client.get(
-            "/api/write/v1/schema/page-types/testapp.SimplePage/", **auth_header
+            "/api/write/v1/schema/testapp.SimplePage/", **auth_header
         )
         data = response.json()
         assert data["streamfield_blocks"] == {}
 
     def test_event_page_streamfield_blocks(self, api_client, auth_header):
         response = api_client.get(
-            "/api/write/v1/schema/page-types/testapp.EventPage/", **auth_header
+            "/api/write/v1/schema/testapp.EventPage/", **auth_header
         )
         data = response.json()
         block_types = data["streamfield_blocks"]["body"]

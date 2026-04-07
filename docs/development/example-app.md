@@ -172,7 +172,7 @@ Returns `204 No Content` on success.
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-     http://localhost:8000/api/write/v1/schema/page-types/ | python -m json.tool
+     http://localhost:8000/api/write/v1/schema/ | python -m json.tool
 ```
 
 ## Test models

@@ -2,6 +2,9 @@
 
 Full CRUD for Wagtail pages with draft/publish workflow, tree operations, and revision history.
 
+!!! note
+    All API URLs require a trailing slash (e.g. `/pages/`, `/pages/3/`). Requests without one will receive a `301` redirect. This follows the standard Django URL convention.
+
 ## Endpoints
 
 | Method | Path | Description |

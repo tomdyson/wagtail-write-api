@@ -49,6 +49,8 @@ curl -H "Authorization: Bearer <token>" http://localhost:8000/api/write/v1/pages
 
 Interactive API docs are served at `/api/write/v1/docs`.
 
+> **Note:** All API URLs require a trailing slash (e.g. `/pages/`, `/pages/3/`). Requests without a trailing slash will receive a `301` redirect.
+
 ## Requirements
 
 - Python 3.10+

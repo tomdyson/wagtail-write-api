@@ -6,15 +6,15 @@ Discover what page types exist, what fields they accept, and their parent/child 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/schema/page-types/` | List all page types |
-| `GET` | `/schema/page-types/{type}/` | Full schema for a page type |
+| `GET` | `/schema/` | List all page types |
+| `GET` | `/schema/{type}/` | Full schema for a page type |
 
 ---
 
 ## List page types
 
 ```
-GET /schema/page-types/
+GET /schema/
 ```
 
 ### Response
@@ -47,7 +47,7 @@ The `allowed_parent_types` and `allowed_subpage_types` reflect the page model's 
 ## Get page type schema
 
 ```
-GET /schema/page-types/blog.BlogPage/
+GET /schema/blog.BlogPage/
 ```
 
 Returns the full JSON Schema for the create, patch, and read schemas, plus detailed StreamField block definitions:
