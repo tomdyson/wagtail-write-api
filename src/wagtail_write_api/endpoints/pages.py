@@ -589,7 +589,7 @@ def _build_hints(page, type_str):
     if page.live:
         hints["unpublish"] = f"wagapi pages unpublish {page.id}"
 
-    hints["edit"] = f"wagapi pages update {page.id} --title '...' --body '...'"
+    hints["edit"] = f"wagapi pages update {page.id} --title '...' --field 'body:...'"
     hints["view"] = f"wagapi pages get {page.id}"
     hints["delete"] = f"wagapi pages delete {page.id}"
 

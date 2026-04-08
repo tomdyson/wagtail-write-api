@@ -57,7 +57,7 @@ Interactive API docs are served at `/api/write/v1/docs`.
 ```bash
 uvx wagapi schema                                    # discover content model
 uvx wagapi pages create testapp.BlogPage \
-  --parent /blog/ --title "Hello" --body "..."       # create a page
+  --parent /blog/ --title "Hello" --field "body:..."  # create a page
 uvx wagapi snippets list testapp.Category            # list snippets
 ```
 

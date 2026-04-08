@@ -126,7 +126,7 @@ If the page has no unpublished changes, the draft and live content are identical
   "hints": {
     "publish": "wagapi pages publish 5",
     "unpublish": "wagapi pages unpublish 5",
-    "edit": "wagapi pages update 5 --title '...' --body '...'",
+    "edit": "wagapi pages update 5 --title '...' --field 'body:...'",
     "view": "wagapi pages get 5",
     "delete": "wagapi pages delete 5"
   }
