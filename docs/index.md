@@ -29,6 +29,7 @@ If you're building a mobile CMS editor, a CI/CD content pipeline, or a third-par
 - **Image management** -- upload, list, update, and delete images with rendition URLs
 - **Wagtail permissions** -- respects the same tree-based permission model as the admin
 - **OpenAPI docs** -- interactive API docs at `/docs`
+- **Mobile app connect** -- QR code in the Wagtail admin for instant [Wagtail Mobile](https://github.com/tomdyson/wagtail-mobile) setup
 
 ## Quick install
 

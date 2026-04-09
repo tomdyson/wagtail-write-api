@@ -24,6 +24,7 @@ nav = [
         "guides/streamfield.md",
         "guides/permissions.md",
         "guides/workflow.md",
+        "guides/mobile-app.md",
     ]},
     { "Development" = [
         "development/contributing.md",

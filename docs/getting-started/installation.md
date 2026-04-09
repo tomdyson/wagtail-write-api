@@ -34,6 +34,7 @@ The following packages are installed automatically:
 | `django-ninja` | API framework (Pydantic + OpenAPI) |
 | `markdown` | Markdown to HTML conversion |
 | `markdownify` | HTML to Markdown conversion |
+| `qrcode` | QR code generation for mobile app connect |
 
 ## Configure Django
 
