@@ -105,6 +105,7 @@ class EventPage(Page):
     start_date = models.DateTimeField()
     end_date = models.DateTimeField(null=True, blank=True)
     location = models.CharField(max_length=255)
+    virtual = models.BooleanField(default=False)
     legacy_id = models.CharField(max_length=50, blank=True)
     body = StreamField(
         [
@@ -118,6 +119,7 @@ class EventPage(Page):
         FieldPanel("start_date"),
         FieldPanel("end_date"),
         FieldPanel("location"),
+        FieldPanel("virtual"),
         FieldPanel("body"),
     ]
 
