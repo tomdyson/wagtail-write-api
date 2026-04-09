@@ -3,19 +3,30 @@
 {% block main_content %}
 <div style="max-width: 480px; margin: 0 auto; text-align: center;">
     <p style="margin-bottom: 24px; color: #444;">
-        Scan this QR code with <strong>Wagtail Mobile</strong> to connect instantly.
+        Connect <strong>Wagtail Mobile</strong> by scanning a QR code with your phone's camera.
     </p>
 
-    <div style="display: inline-block; padding: 16px; background: #fff; border-radius: 12px; border: 1px solid #e0e0e0;">
-        {{ svg|safe }}
+    <div id="qr-hidden">
+        <button type="button" onclick="document.getElementById('qr-hidden').style.display='none';document.getElementById('qr-visible').style.display='block';" style="background: #111827; color: #fff; border: none; border-radius: 8px; padding: 12px 28px; font-size: 15px; font-weight: 600; cursor: pointer;">
+            Show QR Code
+        </button>
+        <p style="margin-top: 12px; font-size: 12px; color: #888;">
+            The QR code contains your API token. Only reveal it when you're ready to scan.
+        </p>
     </div>
 
-    <p style="margin-top: 24px; font-size: 13px; color: #888;">
-        Connecting to <strong>{{ api_url }}</strong>
-    </p>
+    <div id="qr-visible" style="display: none;">
+        <div style="display: inline-block; padding: 16px; background: #fff; border-radius: 12px; border: 1px solid #e0e0e0;">
+            {{ svg|safe }}
+        </div>
 
-    <p style="margin-top: 16px; font-size: 12px; color: #b00;">
-        This code contains your API token. Treat it like a password.
-    </p>
+        <p style="margin-top: 24px; font-size: 13px; color: #888;">
+            Connecting to <strong>{{ api_url }}</strong>
+        </p>
+
+        <p style="margin-top: 16px; font-size: 12px; color: #b00;">
+            This code contains your API token. Treat it like a password.
+        </p>
+    </div>
 </div>
 {% endblock %}
