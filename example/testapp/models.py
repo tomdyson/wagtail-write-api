@@ -71,6 +71,7 @@ class BlogPage(Page):
                     )
                 ),
             ),
+            ("featured_page", PageChooserBlock()),
             ("related_pages", ListBlock(PageChooserBlock())),
             ("category_highlight", SnippetChooserBlock("testapp.Category")),
         ],

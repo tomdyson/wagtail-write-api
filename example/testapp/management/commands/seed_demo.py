@@ -55,26 +55,68 @@ class Command(BaseCommand):
         )
         blog_index.save_revision().publish()
 
+        # Create images first so we can reference them in blog posts
+        Image.objects.all().delete()
+        image_titles = ["Hero background", "Blog header", "Team photo"]
+        demo_images = []
+        for i, title in enumerate(image_titles, 1):
+            img = self._create_placeholder_image(100 * i, 80 * i)
+            demo_images.append(
+                Image.objects.create(
+                    title=title,
+                    file=ImageFile(img, name=f"demo-{i}.png"),
+                    uploaded_by_user=admin,
+                )
+            )
+
+        self.stdout.write(f"Created {len(image_titles)} images")
+
         for i in range(1, 6):
+            blocks = [
+                {
+                    "type": "heading",
+                    "value": {"text": f"Heading for post {i}", "size": "h2"},
+                    "id": str(uuid.uuid4()),
+                },
+                {
+                    "type": "paragraph",
+                    "value": f"<p>Content of blog post {i}.</p>",
+                    "id": str(uuid.uuid4()),
+                },
+            ]
+            # Add an image block to the first two posts
+            if i <= 2:
+                blocks.append(
+                    {
+                        "type": "image",
+                        "value": demo_images[(i - 1) % len(demo_images)].pk,
+                        "id": str(uuid.uuid4()),
+                    }
+                )
+            # Add a featured_page block to posts 2 and 3
+            if i == 2:
+                blocks.append(
+                    {
+                        "type": "featured_page",
+                        "value": about.pk,
+                        "id": str(uuid.uuid4()),
+                    }
+                )
+            if i == 3:
+                blocks.append(
+                    {
+                        "type": "related_pages",
+                        "value": [about.pk],
+                        "id": str(uuid.uuid4()),
+                    }
+                )
+
             blog = blog_index.add_child(
                 instance=BlogPage(
                     title=f"Blog Post {i}",
                     slug=f"blog-post-{i}",
                     published_date=f"2026-0{i}-01",
-                    body=json.dumps(
-                        [
-                            {
-                                "type": "heading",
-                                "value": {"text": f"Heading for post {i}", "size": "h2"},
-                                "id": str(uuid.uuid4()),
-                            },
-                            {
-                                "type": "paragraph",
-                                "value": f"<p>Content of blog post {i}.</p>",
-                                "id": str(uuid.uuid4()),
-                            },
-                        ]
-                    ),
+                    body=json.dumps(blocks),
                 )
             )
             blog.save_revision().publish()
@@ -138,18 +180,7 @@ class Command(BaseCommand):
             Tag.objects.create(name=name)
         self.stdout.write(f"Created {Category.objects.count()} categories, {Tag.objects.count()} tags")
 
-        # Images
-        Image.objects.all().delete()
-        image_titles = ["Hero background", "Blog header", "Team photo"]
-        for i, title in enumerate(image_titles, 1):
-            img = self._create_placeholder_image(100 * i, 80 * i)
-            Image.objects.create(
-                title=title,
-                file=ImageFile(img, name=f"demo-{i}.png"),
-                uploaded_by_user=admin,
-            )
-
-        self.stdout.write(f"Created {len(image_titles)} images")
+        # (Images already created above, before blog posts)
 
         # Print tokens
         self.stdout.write("\n--- API Tokens ---")
