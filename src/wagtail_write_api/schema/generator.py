@@ -1,6 +1,7 @@
 from typing import Any, Optional, Union
 
-from pydantic import create_model
+from pydantic import Field, create_model
+from pydantic.fields import FieldInfo
 
 from wagtail_write_api.schema.fields import SKIP_FIELDS, map_django_field
 
@@ -77,11 +78,10 @@ def generate_schemas_for_model(model_class, model_kind="page"):
     patch_fields = {}
     if model_kind == "page":
         patch_fields["action"] = (Optional[str], None)
-    for name, (python_type, _) in write_fields.items():
-        # Make everything Optional with None default
-        if hasattr(python_type, "__origin__"):
-            # Already Optional or other generic
-            patch_fields[name] = (Optional[python_type], None)
+    for name, (python_type, default) in write_fields.items():
+        # Make everything Optional with None default, preserving Field metadata
+        if isinstance(default, FieldInfo) and default.json_schema_extra:
+            patch_fields[name] = (Optional[python_type], Field(default=None, json_schema_extra=default.json_schema_extra))
         else:
             patch_fields[name] = (Optional[python_type], None)
     PatchSchema = create_model(f"{model_name}Patch", **patch_fields)
