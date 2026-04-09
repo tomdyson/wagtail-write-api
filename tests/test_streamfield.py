@@ -28,6 +28,16 @@ class TestStreamFieldRead(TestCase):
         )
         blog_index.save_revision().publish()
 
+        # Create a second page to reference in related_pages
+        cls.other_page = blog_index.add_child(
+            instance=BlogPage(
+                title="Other Post",
+                slug="other-post",
+                body=json.dumps([]),
+            )
+        )
+        cls.other_page.save_revision().publish()
+
         cls.blog = blog_index.add_child(
             instance=BlogPage(
                 title="Stream Post",
@@ -44,6 +54,11 @@ class TestStreamFieldRead(TestCase):
                             "value": "<p>Some content here</p>",
                             "id": str(uuid.uuid4()),
                         },
+                        {
+                            "type": "related_pages",
+                            "value": [cls.other_page.id],
+                            "id": str(uuid.uuid4()),
+                        },
                     ]
                 ),
             )
@@ -54,7 +69,7 @@ class TestStreamFieldRead(TestCase):
         response = self.client.get(f"/api/write/v1/pages/{self.blog.id}/", **self.auth)
         data = response.json()
         assert isinstance(data["body"], list)
-        assert len(data["body"]) == 2
+        assert len(data["body"]) == 3
 
     def test_streamfield_block_has_type_value_id(self):
         response = self.client.get(f"/api/write/v1/pages/{self.blog.id}/", **self.auth)
@@ -64,6 +79,14 @@ class TestStreamFieldRead(TestCase):
         assert "value" in block
         assert "id" in block
         assert block["type"] == "heading"
+
+    def test_list_block_value_is_list(self):
+        """ListBlock values (e.g. related_pages) must serialize as JSON arrays, not string reprs."""
+        response = self.client.get(f"/api/write/v1/pages/{self.blog.id}/", **self.auth)
+        data = response.json()
+        related = next(b for b in data["body"] if b["type"] == "related_pages")
+        assert isinstance(related["value"], list), f"Expected list, got {type(related['value'])}: {related['value']}"
+        assert related["value"] == [self.other_page.id]
 
     def test_struct_block_value_is_dict(self):
         response = self.client.get(f"/api/write/v1/pages/{self.blog.id}/", **self.auth)
@@ -257,3 +280,26 @@ class TestStreamFieldWrite:
         assert response.status_code == 200
         para = response.json()["body"][0]
         assert para["value"] == "<p>Plain HTML</p>"
+
+    def test_list_block_round_trip(self, api_client, auth_header, blog_with_streamfield):
+        """Write a ListBlock (related_pages), read it back, verify it round-trips."""
+        target_id = blog_with_streamfield.id
+        body_data = [
+            {
+                "type": "related_pages",
+                "value": [target_id],
+                "id": str(uuid.uuid4()),
+            },
+        ]
+        response = api_client.patch(
+            f"/api/write/v1/pages/{blog_with_streamfield.id}/",
+            data=json.dumps({"body": body_data}),
+            content_type="application/json",
+            **auth_header,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        related = data["body"][0]
+        assert related["type"] == "related_pages"
+        assert isinstance(related["value"], list)
+        assert related["value"] == [target_id]
