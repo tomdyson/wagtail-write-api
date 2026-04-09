@@ -491,6 +491,47 @@ def _get_url_path(page):
     return url_path or "/"
 
 
+def _prepare_streamfield_value(blocks, stream_field):
+    """Walk StreamField blocks and convert richtext values."""
+    from wagtail.blocks import RichTextBlock, StructBlock
+
+    from wagtail_write_api.converters.rich_text import convert_rich_text_input
+
+    if not isinstance(blocks, list):
+        return blocks
+
+    child_blocks = stream_field.stream_block.child_blocks
+    result = []
+    for block in blocks:
+        block_type = block.get("type")
+        value = block.get("value")
+        child_block = child_blocks.get(block_type)
+        if isinstance(child_block, RichTextBlock) and value is not None:
+            value = convert_rich_text_input(value)
+        elif isinstance(child_block, StructBlock) and isinstance(value, dict):
+            value = _prepare_struct_value(value, child_block)
+        result.append({**block, "value": value})
+    return result
+
+
+def _prepare_struct_value(value, struct_block):
+    """Recursively convert richtext values inside StructBlocks."""
+    from wagtail.blocks import RichTextBlock, StructBlock
+
+    from wagtail_write_api.converters.rich_text import convert_rich_text_input
+
+    result = {}
+    for key, val in value.items():
+        child = struct_block.child_blocks.get(key)
+        if isinstance(child, RichTextBlock) and val is not None:
+            result[key] = convert_rich_text_input(val)
+        elif isinstance(child, StructBlock) and isinstance(val, dict):
+            result[key] = _prepare_struct_value(val, child)
+        else:
+            result[key] = val
+    return result
+
+
 def _apply_fields(page, body, model_class):
     """Apply request body fields to a page instance."""
     from modelcluster.fields import ParentalKey
@@ -534,7 +575,7 @@ def _apply_fields(page, body, model_class):
             continue
 
         if isinstance(field, StreamField):
-            setattr(page, key, value)
+            setattr(page, key, _prepare_streamfield_value(value, field))
         elif isinstance(field, RichTextField):
             setattr(page, key, convert_rich_text_input(value))
         elif field and field.is_relation:

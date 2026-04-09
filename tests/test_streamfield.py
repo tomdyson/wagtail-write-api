@@ -168,3 +168,92 @@ class TestStreamFieldWrite:
         for orig, rt in zip(original_body, round_tripped_body):
             assert orig["type"] == rt["type"]
             assert orig["value"] == rt["value"]
+
+    def test_write_paragraph_with_markdown_format(
+        self, api_client, auth_header, blog_with_streamfield
+    ):
+        """RichTextBlock values accept {format: 'markdown', content: '...'} like RichTextField."""
+        body_data = [
+            {
+                "type": "heading",
+                "value": {"text": "Keep This", "size": "h2"},
+                "id": str(uuid.uuid4()),
+            },
+            {
+                "type": "paragraph",
+                "value": {"format": "markdown", "content": "Hello **world**"},
+                "id": str(uuid.uuid4()),
+            },
+        ]
+        response = api_client.patch(
+            f"/api/write/v1/pages/{blog_with_streamfield.id}/",
+            data=json.dumps({"body": body_data}),
+            content_type="application/json",
+            **auth_header,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # Paragraph should be stored as HTML
+        para = data["body"][1]
+        assert para["type"] == "paragraph"
+        assert "<strong>world</strong>" in para["value"]
+        assert "format" not in str(para["value"])
+
+    def test_markdown_round_trip_streamfield(
+        self, api_client, auth_header, blog_with_streamfield
+    ):
+        """GET with ?rich_text_format=markdown, PATCH back with markdown wrapper."""
+        # Read as markdown
+        response1 = api_client.get(
+            f"/api/write/v1/pages/{blog_with_streamfield.id}/?rich_text_format=markdown",
+            **auth_header,
+        )
+        body = response1.json()["body"]
+
+        # Wrap paragraph values in markdown format dict for write
+        patched_body = []
+        for block in body:
+            if block["type"] == "paragraph" and isinstance(block["value"], str):
+                patched_body.append(
+                    {**block, "value": {"format": "markdown", "content": block["value"]}}
+                )
+            else:
+                patched_body.append(block)
+
+        # Write back
+        response2 = api_client.patch(
+            f"/api/write/v1/pages/{blog_with_streamfield.id}/",
+            data=json.dumps({"body": patched_body}),
+            content_type="application/json",
+            **auth_header,
+        )
+        assert response2.status_code == 200
+
+        # Read again (HTML) and verify content survived
+        response3 = api_client.get(
+            f"/api/write/v1/pages/{blog_with_streamfield.id}/", **auth_header
+        )
+        final_body = response3.json()["body"]
+        para = next(b for b in final_body if b["type"] == "paragraph")
+        assert "content" in para["value"] or "<p>" in para["value"]
+
+    def test_plain_string_paragraph_still_works(
+        self, api_client, auth_header, blog_with_streamfield
+    ):
+        """Plain HTML strings for RichTextBlock values continue to work."""
+        body_data = [
+            {
+                "type": "paragraph",
+                "value": "<p>Plain HTML</p>",
+                "id": str(uuid.uuid4()),
+            },
+        ]
+        response = api_client.patch(
+            f"/api/write/v1/pages/{blog_with_streamfield.id}/",
+            data=json.dumps({"body": body_data}),
+            content_type="application/json",
+            **auth_header,
+        )
+        assert response.status_code == 200
+        para = response.json()["body"][0]
+        assert para["value"] == "<p>Plain HTML</p>"

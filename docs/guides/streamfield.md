@@ -82,6 +82,26 @@ block_id = str(uuid.uuid4())
 const blockId = crypto.randomUUID();
 ```
 
+### RichTextBlock values
+
+`RichTextBlock` values inside StreamField accept the same format options as top-level [RichTextField](rich-text.md) values. You can send:
+
+- A plain HTML string (default): `"value": "<p>Hello <strong>world</strong></p>"`
+- A format dict with markdown: `"value": {"format": "markdown", "content": "Hello **world**"}`
+- A format dict with HTML: `"value": {"format": "html", "content": "<p>Hello</p>"}`
+
+This is especially useful when combined with `?rich_text_format=markdown` for reading: fetch content as markdown, let users edit the markdown, then send it back with the format wrapper — no client-side markdown-to-HTML conversion needed.
+
+```json
+{
+  "type": "paragraph",
+  "value": {"format": "markdown", "content": "Hello **world**"},
+  "id": "e5f6g7h8"
+}
+```
+
+The same conversion applies recursively inside StructBlocks — if a StructBlock contains a RichTextBlock child, you can use the format dict for that child's value too.
+
 ## StructBlock
 
 StructBlock values are objects whose keys match the child block names:
