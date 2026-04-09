@@ -136,8 +136,16 @@ If the page has no unpublished changes, the draft and live content are identical
 !!! note "`meta.user_permissions`"
     Tells the client what the authenticated user can do with this page. A mobile app can use this to show/hide publish buttons, lock indicators, etc. without extra permission-checking requests.
 
-!!! note "`hints`"
+!!! note "`hints` (opt-in via `X-Hints` header)"
     The `hints` object provides ready-to-use CLI commands for common next actions. This is designed for LLM orchestration — an agent can read the hints and immediately know what command to run next without constructing it from scratch. The `publish` hint is only present when the page is unpublished or has unpublished changes.
+
+    **Hints are only included when the client sends the `X-Hints` header.** Without the header, the `hints` key is omitted entirely. This keeps responses clean for generic REST consumers.
+
+    ```
+    X-Hints: wagapi
+    ```
+
+    The wagapi CLI sends this header automatically. Other clients can send it to receive hints, or omit it for minimal responses.
 
 ---
 

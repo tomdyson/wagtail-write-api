@@ -136,7 +136,7 @@ def get_page(request, page_id: int, version: Optional[str] = None):
     else:
         source = specific
 
-    data = _serialize_page(source, specific, type_str, request.user)
+    data = _serialize_page(source, specific, type_str, request.user, request)
     return data
 
 
@@ -229,7 +229,7 @@ def create_page(request):
             page.refresh_from_db()
 
     type_str_actual = f"{page._meta.app_label}.{page.__class__.__name__}"
-    data = _serialize_page(page, page, type_str_actual, request.user)
+    data = _serialize_page(page, page, type_str_actual, request.user, request)
     return 201, data
 
 
@@ -270,7 +270,7 @@ def update_page(request, page_id: int):
             page.refresh_from_db()
 
     type_str = f"{page._meta.app_label}.{page.__class__.__name__}"
-    data = _serialize_page(page, page, type_str, request.user)
+    data = _serialize_page(page, page, type_str, request.user, request)
     return data
 
 
@@ -311,7 +311,7 @@ def publish_page(request, page_id: int):
 
     page.refresh_from_db()
     type_str = f"{page._meta.app_label}.{page.__class__.__name__}"
-    return _serialize_page(page, page, type_str, request.user)
+    return _serialize_page(page, page, type_str, request.user, request)
 
 
 # ---------------------------------------------------------------------------
@@ -329,7 +329,7 @@ def unpublish_page(request, page_id: int):
     page.unpublish(user=request.user)
     page.refresh_from_db()
     type_str = f"{page._meta.app_label}.{page.__class__.__name__}"
-    return _serialize_page(page, page, type_str, request.user)
+    return _serialize_page(page, page, type_str, request.user, request)
 
 
 # ---------------------------------------------------------------------------
@@ -372,7 +372,7 @@ def get_revision(request, page_id: int, revision_id: int):
 
     rev_page = revision.as_object()
     type_str = f"{page.specific._meta.app_label}.{page.specific.__class__.__name__}"
-    return _serialize_page(rev_page, page.specific, type_str, request.user)
+    return _serialize_page(rev_page, page.specific, type_str, request.user, request)
 
 
 # ---------------------------------------------------------------------------
@@ -407,7 +407,7 @@ def copy_page(request, page_id: int):
     )
 
     type_str = f"{new_page._meta.app_label}.{new_page.__class__.__name__}"
-    data = _serialize_page(new_page, new_page, type_str, request.user)
+    data = _serialize_page(new_page, new_page, type_str, request.user, request)
     return 201, data
 
 
@@ -436,7 +436,7 @@ def move_page(request, page_id: int):
     page.refresh_from_db()
     specific = page.specific
     type_str = f"{specific._meta.app_label}.{specific.__class__.__name__}"
-    return _serialize_page(specific, specific, type_str, request.user)
+    return _serialize_page(specific, specific, type_str, request.user, request)
 
 
 # ---------------------------------------------------------------------------
@@ -531,7 +531,7 @@ def _apply_fields(page, body, model_class):
             setattr(page, key, value)
 
 
-def _serialize_page(source, page, type_str, user):
+def _serialize_page(source, page, type_str, user, request=None):
     """Serialize a page instance to a dict."""
     from wagtail_write_api.schema.registry import schema_registry
 
@@ -572,18 +572,25 @@ def _serialize_page(source, page, type_str, user):
         "user_permissions": get_user_page_permissions(user, page),
     }
 
-    data["hints"] = _build_hints(page, type_str)
+    hint_style = _get_hint_style(request) if request else None
+    if hint_style:
+        data["hints"] = _build_hints(page, type_str, hint_style)
 
     return data
 
 
-def _build_hints(page, type_str):
+def _get_hint_style(request):
+    """Return the hint style from the X-Hints header, or None."""
+    if request is None:
+        return None
+    return request.META.get("HTTP_X_HINTS") or None
+
+
+def _build_hints(page, type_str, style="wagapi"):
     """Build actionable hints for LLM/CLI consumers."""
     hints = {}
 
-    if not page.live:
-        hints["publish"] = f"wagapi pages publish {page.id}"
-    elif page.has_unpublished_changes:
+    if not page.live or page.has_unpublished_changes:
         hints["publish"] = f"wagapi pages publish {page.id}"
 
     if page.live:

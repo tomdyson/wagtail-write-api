@@ -272,6 +272,7 @@ class TestHintsInPageResponse(TestCase):
         cls.admin = User.objects.create_superuser("admin_hints", "hints@test.com", "pw")
         token, _ = ApiToken.objects.get_or_create(user=cls.admin)
         cls.auth = {"HTTP_AUTHORIZATION": f"Bearer {token.key}"}
+        cls.auth_with_hints = {**cls.auth, "HTTP_X_HINTS": "wagapi"}
 
         root = Page.objects.filter(depth=1).first()
         cls.home = root.add_child(title="Home", slug="home-hints")
@@ -287,7 +288,7 @@ class TestHintsInPageResponse(TestCase):
                 {"type": "testapp.SimplePage", "parent": self.home.id, "title": "Draft"}
             ),
             content_type="application/json",
-            **self.auth,
+            **self.auth_with_hints,
         )
         data = response.json()
         assert "hints" in data
@@ -306,7 +307,7 @@ class TestHintsInPageResponse(TestCase):
                 }
             ),
             content_type="application/json",
-            **self.auth,
+            **self.auth_with_hints,
         )
         data = response.json()
         assert "hints" in data
@@ -319,7 +320,7 @@ class TestHintsInPageResponse(TestCase):
                 {"type": "testapp.SimplePage", "parent": self.home.id, "title": "Test"}
             ),
             content_type="application/json",
-            **self.auth,
+            **self.auth_with_hints,
         )
         data = response.json()
         hints = data["hints"]
@@ -335,12 +336,32 @@ class TestHintsInPageResponse(TestCase):
                 {"type": "testapp.SimplePage", "parent": self.home.id, "title": "Detail Test"}
             ),
             content_type="application/json",
-            **self.auth,
+            **self.auth_with_hints,
         )
         page_id = response.json()["id"]
 
-        # GET should also include hints
-        response = self.client.get(f"/api/write/v1/pages/{page_id}/", **self.auth)
+        # GET should also include hints when X-Hints header is sent
+        response = self.client.get(
+            f"/api/write/v1/pages/{page_id}/", **self.auth_with_hints
+        )
         data = response.json()
         assert "hints" in data
         assert "publish" in data["hints"]
+
+    def test_no_hints_without_header(self):
+        """Hints are omitted when X-Hints header is not sent."""
+        response = self.client.post(
+            "/api/write/v1/pages/",
+            data=json.dumps(
+                {"type": "testapp.SimplePage", "parent": self.home.id, "title": "No Hints"}
+            ),
+            content_type="application/json",
+            **self.auth,
+        )
+        data = response.json()
+        assert "hints" not in data
+
+        page_id = data["id"]
+        response = self.client.get(f"/api/write/v1/pages/{page_id}/", **self.auth)
+        data = response.json()
+        assert "hints" not in data
