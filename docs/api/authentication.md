@@ -35,6 +35,29 @@ token, created = ApiToken.objects.get_or_create(user=user)
 print(token.key)
 ```
 
+### Via API (username/password login)
+
+`POST /auth/token/` exchanges a username and password for an API token. This endpoint does not require an existing token.
+
+```bash
+curl -X POST https://example.com/api/write/v1/auth/token/ \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "secret"}'
+```
+
+```json
+{"token": "25e620d83a9c4a591f5986b1b74bbd4b7365c4be", "username": "admin"}
+```
+
+If the user already has a token, the existing token is returned. If not, a new one is created.
+
+| Status | Condition |
+|--------|-----------|
+| `200 OK` | Valid credentials — returns token |
+| `401 Unauthorized` | Invalid username or password |
+| `401 Unauthorized` | User account is inactive |
+| `422 Unprocessable Entity` | Missing username or password field |
+
 ## Error responses
 
 | Status | Condition |

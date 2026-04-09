@@ -116,7 +116,12 @@ def list_pages(
 # DETAIL
 # ---------------------------------------------------------------------------
 @router.get("/{page_id}/")
-def get_page(request, page_id: int, version: Optional[str] = None):
+def get_page(
+    request,
+    page_id: int,
+    version: Optional[str] = None,
+    rich_text_format: Optional[str] = None,
+):
     from wagtail.models import Page
 
     try:
@@ -136,7 +141,14 @@ def get_page(request, page_id: int, version: Optional[str] = None):
     else:
         source = specific
 
-    data = _serialize_page(source, specific, type_str, request.user, request)
+    effective_format = rich_text_format or api_settings.RICH_TEXT_OUTPUT_FORMAT
+    # "html" is the default — treat it as no conversion needed
+    if effective_format == "html":
+        effective_format = None
+    data = _serialize_page(
+        source, specific, type_str, request.user, request,
+        rich_text_format=effective_format,
+    )
     return data
 
 
@@ -531,11 +543,20 @@ def _apply_fields(page, body, model_class):
             setattr(page, key, value)
 
 
-def _serialize_page(source, page, type_str, user, request=None):
+def _serialize_page(source, page, type_str, user, request=None, rich_text_format=None):
     """Serialize a page instance to a dict."""
+    from wagtail.fields import RichTextField
+
     from wagtail_write_api.schema.registry import schema_registry
 
     data = {"id": page.id}
+
+    # Detect which fields are RichTextFields from the model
+    rich_text_field_names = set()
+    model_class = page.specific_class
+    for field in model_class._meta.get_fields():
+        if isinstance(field, RichTextField):
+            rich_text_field_names.add(field.name)
 
     try:
         read_schema, _, _ = schema_registry.get_schemas(type_str)
@@ -544,7 +565,11 @@ def _serialize_page(source, page, type_str, user, request=None):
                 continue
             if hasattr(source, field_name):
                 val = getattr(source, field_name)
-                data[field_name] = _serialize_value(val)
+                is_rich_text = field_name in rich_text_field_names
+                data[field_name] = _serialize_value(
+                    val, rich_text_format=rich_text_format,
+                    is_rich_text=is_rich_text,
+                )
     except KeyError:
         data["title"] = source.title
         data["slug"] = source.slug
@@ -603,7 +628,7 @@ def _build_hints(page, type_str, style="wagapi"):
     return hints
 
 
-def _serialize_value(val):
+def _serialize_value(val, rich_text_format=None, is_rich_text=False):
     """Convert a field value to JSON-serializable form."""
     from datetime import date, datetime
 
@@ -612,7 +637,16 @@ def _serialize_value(val):
     if val is None:
         return None
     if isinstance(val, RichText):
-        return str(val)
+        html = str(val)
+        if rich_text_format == "markdown":
+            from wagtail_write_api.converters.rich_text import html_to_markdown
+
+            return html_to_markdown(html)
+        return html
+    if is_rich_text and isinstance(val, str) and rich_text_format == "markdown":
+        from wagtail_write_api.converters.rich_text import html_to_markdown
+
+        return html_to_markdown(val)
     if isinstance(val, datetime):
         return val.isoformat()
     if isinstance(val, date):
@@ -632,7 +666,7 @@ def _serialize_value(val):
             result.append(
                 {
                     "type": block.block_type,
-                    "value": _serialize_block_value(block.value),
+                    "value": _serialize_block_value(block.value, rich_text_format=rich_text_format),
                     "id": block.id,
                 }
             )
@@ -665,7 +699,7 @@ def _serialize_value(val):
         return repr(val)
 
 
-def _serialize_block_value(val):
+def _serialize_block_value(val, rich_text_format=None):
     """Serialize a StreamField block value."""
     from wagtail.rich_text import RichText
 
@@ -674,11 +708,16 @@ def _serialize_block_value(val):
     if isinstance(val, (str, int, float, bool)):
         return val
     if isinstance(val, RichText):
-        return str(val)
+        html = str(val)
+        if rich_text_format == "markdown":
+            from wagtail_write_api.converters.rich_text import html_to_markdown
+
+            return html_to_markdown(html)
+        return html
     if isinstance(val, dict):
-        return {k: _serialize_block_value(v) for k, v in val.items()}
+        return {k: _serialize_block_value(v, rich_text_format=rich_text_format) for k, v in val.items()}
     if isinstance(val, list):
-        return [_serialize_block_value(item) for item in val]
+        return [_serialize_block_value(item, rich_text_format=rich_text_format) for item in val]
     if hasattr(val, "pk"):
         return val.pk
     return str(val)

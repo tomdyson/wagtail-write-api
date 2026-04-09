@@ -59,6 +59,13 @@ def markdown_to_wagtail(md_text: str) -> str:
     return html
 
 
+def html_to_markdown(html: str) -> str:
+    """Convert HTML (from Wagtail rich text) to Markdown."""
+    from markdownify import markdownify as md
+
+    return md(html, heading_style="ATX", bullets="-").strip()
+
+
 def _blocks_to_html(blocks: list) -> str:
     """Extract HTML from a list of StreamField-style blocks.
 

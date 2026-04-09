@@ -82,6 +82,7 @@ GET /pages/{id}/
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `version` | string | Set to `live` to get the published version instead of the draft |
+| `rich_text_format` | string | Set to `markdown` to get rich text fields as Markdown instead of HTML. See [Rich Text guide](../guides/rich-text.md#per-request-rich_text_formatmarkdown). |
 
 ### Draft-aware reads
 

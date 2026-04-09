@@ -75,7 +75,27 @@ Standard Markdown links (`[text](https://example.com)`) are preserved as regular
 
 ## Output format
 
-The format used in GET responses is controlled by the `RICH_TEXT_OUTPUT_FORMAT` setting:
+### Per-request: `?rich_text_format=markdown`
+
+Add `?rich_text_format=markdown` to any page detail request to get rich text fields as Markdown instead of HTML:
+
+```bash
+# Default (HTML)
+GET /pages/4/
+{"body": "<p>Hello <strong>world</strong></p>"}
+
+# Markdown
+GET /pages/4/?rich_text_format=markdown
+{"body": "Hello **world**"}
+```
+
+This applies to both `RichTextField` values and `RichTextBlock` values inside StreamFields. The conversion uses `markdownify` on the server, so no client-side HTML parsing is needed.
+
+**Round-trip workflow:** Read with `?rich_text_format=markdown`, edit the Markdown, write back with `{"format": "markdown", "content": "..."}`. Bold, italic, headings, links, and lists survive the round trip. See the note below about Wagtail internal links.
+
+### Site-wide: `RICH_TEXT_OUTPUT_FORMAT` setting
+
+To change the default output format for all responses, use the `RICH_TEXT_OUTPUT_FORMAT` setting:
 
 ```python title="settings.py"
 WAGTAIL_WRITE_API = {
@@ -89,8 +109,13 @@ WAGTAIL_WRITE_API = {
 | `"wagtail"` | Round-trip editing, CMS editors | `<p>Link to <a linktype="page" id="5">about</a></p>` |
 | `"markdown"` | Markdown-native clients | `Link to [about](/about/)` |
 
+The `?rich_text_format` query parameter overrides this setting on a per-request basis.
+
 !!! tip "For CMS editors"
-    If your client needs to read content, edit it, and write it back, use `"wagtail"` format. This preserves the internal link references (page IDs) through the round trip. With `"html"` format, internal links are expanded to URL paths, which can't be losslessly converted back.
+    If your client needs to read content, edit it, and write it back, use `"wagtail"` format or the `?rich_text_format=markdown` parameter. With the default `"html"` format, Wagtail internal links are expanded to URL paths, which can't be losslessly converted back to page IDs.
+
+!!! warning "Wagtail internal links and markdown round-trips"
+    Wagtail stores internal links as `<a linktype="page" id="5">`. When reading as markdown, these are expanded to standard URL links (e.g. `[text](/about/)`). Writing back as markdown creates a regular `<a href>` — the page ID reference is lost. If preserving internal link references matters, use `wagtail://` links in your markdown input: `[text](wagtail://page/5)`.
 
 ## StreamField blocks sent to a RichTextField
 
