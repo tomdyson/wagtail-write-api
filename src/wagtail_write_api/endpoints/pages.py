@@ -1,3 +1,4 @@
+import collections.abc
 import json
 from typing import Optional
 
@@ -757,7 +758,7 @@ def _serialize_block_value(val, rich_text_format=None):
         return html
     if isinstance(val, dict):
         return {k: _serialize_block_value(v, rich_text_format=rich_text_format) for k, v in val.items()}
-    if isinstance(val, list):
+    if isinstance(val, (list, collections.abc.Sequence)) and not isinstance(val, (str, bytes)):
         return [_serialize_block_value(item, rich_text_format=rich_text_format) for item in val]
     if hasattr(val, "pk"):
         return val.pk
